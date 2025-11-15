@@ -46,6 +46,11 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"],
     required: false,
+  },
+  // Add this field to track Google users
+  isGoogleUser: {
+    type: Boolean,
+    default: false
   }
 }, { timestamps: true });
 

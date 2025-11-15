@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Toaster, toast } from 'sonner';
-import { Eye, EyeOff, Mail, Lock, User, Loader2, Stethoscope, User as PatientIcon, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, Loader2, Stethoscope, User as PatientIcon, X, ChevronLeft, ChevronRight, Upload, FileText } from 'lucide-react';
 import { useAuth } from '../../App';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -33,7 +33,19 @@ export const SignupPage: React.FC = () => {
     contactNumber: '',
     password: '',
     confirmPassword: '',
-    accountType: 'Patient' // Default to Patient
+    accountType: 'Patient', // Default to Patient
+    // Doctor-specific fields
+    medicalLicenseNumber: '',
+    specialization: '',
+    consultantFee: '',
+    experience: '',
+    degrees: '',
+    certification: '',
+    availableDays: [] as string[],
+    availableTimeSlot: {
+      start: '',
+      end: ''
+    }
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -43,6 +55,7 @@ export const SignupPage: React.FC = () => {
   const [showTermsDialog, setShowTermsDialog] = useState(false);
   const [showPrivacyDialog, setShowPrivacyDialog] = useState(false);
   const [currentSection, setCurrentSection] = useState(0);
+  const [medicalCertificateFile, setMedicalCertificateFile] = useState<File | null>(null);
   
   const { signup, googleLogin } = useAuth();
   const navigate = useNavigate();
@@ -149,48 +162,50 @@ export const SignupPage: React.FC = () => {
     }
   ];
 
-  // Initialize Google Sign-In
+  // Initialize Google Sign-In only for patients
   useEffect(() => {
-    const initializeGoogleSignIn = () => {
-      if (window.google) {
-        window.google.accounts.id.initialize({
-          client_id: '172222448657-8qanqq7lktmbl11t9431sjoujk73254k.apps.googleusercontent.com',
-          callback: handleGoogleSignIn,
-          auto_select: false,
-          cancel_on_tap_outside: true,
-        });
-        
-        // Render Google Sign-In button
-        window.google.accounts.id.renderButton(
-          document.getElementById('googleSignInButton'),
-          {
-            theme: 'outline',
-            size: 'large',
-            width: '100%',
-            text: 'signup_with',
-            logo_alignment: 'left'
-          }
-        );
-      }
-    };
+    if (formData.accountType === 'Patient') {
+      const initializeGoogleSignIn = () => {
+        if (window.google) {
+          window.google.accounts.id.initialize({
+            client_id: '172222448657-8qanqq7lktmbl11t9431sjoujk73254k.apps.googleusercontent.com',
+            callback: handleGoogleSignIn,
+            auto_select: false,
+            cancel_on_tap_outside: true,
+          });
+          
+          // Render Google Sign-In button
+          window.google.accounts.id.renderButton(
+            document.getElementById('googleSignInButton'),
+            {
+              theme: 'outline',
+              size: 'large',
+              width: '100%',
+              text: 'signup_with',
+              logo_alignment: 'left'
+            }
+          );
+        }
+      };
 
-    // Load Google Sign-In script
-    const loadGoogleScript = () => {
-      if (!document.querySelector('#google-signin-script')) {
-        const script = document.createElement('script');
-        script.id = 'google-signin-script';
-        script.src = 'https://accounts.google.com/gsi/client';
-        script.async = true;
-        script.defer = true;
-        script.onload = initializeGoogleSignIn;
-        document.head.appendChild(script);
-      } else {
-        initializeGoogleSignIn();
-      }
-    };
+      // Load Google Sign-In script
+      const loadGoogleScript = () => {
+        if (!document.querySelector('#google-signin-script')) {
+          const script = document.createElement('script');
+          script.id = 'google-signin-script';
+          script.src = 'https://accounts.google.com/gsi/client';
+          script.async = true;
+          script.defer = true;
+          script.onload = initializeGoogleSignIn;
+          document.head.appendChild(script);
+        } else {
+          initializeGoogleSignIn();
+        }
+      };
 
-    loadGoogleScript();
-  }, []);
+      loadGoogleScript();
+    }
+  }, [formData.accountType]);
 
   const handleGoogleSignIn = async (response: any) => {
     setIsGoogleLoading(true);
@@ -218,6 +233,47 @@ export const SignupPage: React.FC = () => {
       ...prev,
       [name]: value
     }));
+  };
+
+  const handleTimeSlotChange = (field: 'start' | 'end', value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      availableTimeSlot: {
+        ...prev.availableTimeSlot,
+        [field]: value
+      }
+    }));
+  };
+
+  const handleAvailableDaysChange = (day: string) => {
+    setFormData(prev => ({
+      ...prev,
+      availableDays: prev.availableDays.includes(day)
+        ? prev.availableDays.filter(d => d !== day)
+        : [...prev.availableDays, day]
+    }));
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type and size
+      const validTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+      const maxSize = 5 * 1024 * 1024; // 5MB
+
+      if (!validTypes.includes(file.type)) {
+        toast.error('Please upload a PDF, JPEG, or PNG file');
+        return;
+      }
+
+      if (file.size > maxSize) {
+        toast.error('File size should be less than 5MB');
+        return;
+      }
+
+      setMedicalCertificateFile(file);
+      toast.success('Medical certificate uploaded successfully');
+    }
   };
 
   const validateForm = () => {
@@ -249,6 +305,43 @@ export const SignupPage: React.FC = () => {
       toast.error('Passwords do not match');
       return false;
     }
+
+    // Doctor-specific validations
+    if (formData.accountType === 'Doctor') {
+      if (!formData.medicalLicenseNumber.trim()) {
+        toast.error('Please enter your medical license number');
+        return false;
+      }
+      if (!formData.specialization.trim()) {
+        toast.error('Please enter your specialization');
+        return false;
+      }
+      if (!formData.consultantFee || parseFloat(formData.consultantFee) <= 0) {
+        toast.error('Please enter a valid consultant fee');
+        return false;
+      }
+      if (!formData.experience || parseInt(formData.experience) <= 0) {
+        toast.error('Please enter valid years of experience');
+        return false;
+      }
+      if (!formData.degrees.trim()) {
+        toast.error('Please enter your degrees');
+        return false;
+      }
+      if (!medicalCertificateFile) {
+        toast.error('Please upload your medical certificate');
+        return false;
+      }
+      if (formData.availableDays.length === 0) {
+        toast.error('Please select at least one available day');
+        return false;
+      }
+      if (!formData.availableTimeSlot.start || !formData.availableTimeSlot.end) {
+        toast.error('Please enter your available time slot');
+        return false;
+      }
+    }
+
     if (!acceptTerms) {
       toast.error('Please accept the terms and conditions');
       return false;
@@ -264,16 +357,38 @@ export const SignupPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      await signup(
-        formData.firstName,
-        formData.lastName,
-        formData.email,
-        formData.contactNumber,
-        formData.password,
-        formData.accountType
-      );
-      toast.success('Account created successfully!');
-      navigate('/dashboard');
+      // For doctors, simulate verification and auto-login
+      if (formData.accountType === 'Doctor') {
+        // First create the account
+        await signup(
+          formData.firstName,
+          formData.lastName,
+          formData.email,
+          formData.contactNumber,
+          formData.password,
+          formData.accountType
+        );
+
+        // Simulate doctor verification (in real app, this would be an API call)
+        setTimeout(() => {
+          toast.success('Doctor account verified successfully! You can now log in.');
+          // Auto-login the doctor
+          // In a real app, you would call login here with the credentials
+          navigate('/dashboard');
+        }, 2000);
+      } else {
+        // Regular patient signup
+        await signup(
+          formData.firstName,
+          formData.lastName,
+          formData.email,
+          formData.contactNumber,
+          formData.password,
+          formData.accountType
+        );
+        toast.success('Account created successfully!');
+        navigate('/dashboard');
+      }
     } catch (error: any) {
       console.error('Signup error:', error);
       toast.error(error?.response?.data?.message || error?.message || 'Signup failed. Please try again.');
@@ -290,6 +405,8 @@ export const SignupPage: React.FC = () => {
     setCurrentSection(prev => (prev - 1 + sections.length) % sections.length);
   };
 
+  const isDoctor = formData.accountType === 'Doctor';
+
   return (
     <div 
       className="min-h-screen bg-cover bg-center flex items-center justify-center py-12 px-4" 
@@ -297,51 +414,67 @@ export const SignupPage: React.FC = () => {
     >
       <div className="max-w-4xl w-full grid lg:grid-cols-2 gap-8 items-center">
         {/* Left side - Image */}
-        <div className="hidden lg:block">
-          <div className="relative">
-            <div className="w-full h-[500px] bg-black-800  shadow-xl flex items-center justify-center">
-            <img src="/left.png" alt="" />
-              <div className="text-center text-primary">
-              </div>
-            </div>
-            <div className="absolute inset-0 bg-gradient-to-t from-primary/20 to-transparent rounded-2xl" />
-            <div className="absolute bottom-8 left-8 text-white">
-              <h3 className="text-2xl font-bold mb-2">Join Our Community</h3>
-              <p className="text-white/90">Start your journey to better healthcare</p>
-            </div>
-          </div>
-        </div>
+        {/* Left side - Image */}
+<div className="hidden lg:block">
+  <div className="relative h-full">
+    <div className="w-full h-[680px] bg-black rounded-2xl shadow-xl flex items-center justify-center overflow-hidden">
+      <img 
+        src="/left.png" 
+        alt="Healthcare illustration" 
+        className="w-full h-full object-cover"
+      />
+      <div className="absolute inset-0 bg-black/40 rounded-2xl" />
+    </div>
+    <div className="absolute bottom-8 left-8 text-white">
+      <h3 className="text-2xl font-bold mb-2">
+        {isDoctor ? 'Join as Healthcare Provider' : 'Join Our Community'}
+      </h3>
+      <p className="text-white/90">
+        {isDoctor ? 'Start providing healthcare services' : 'Start your journey to better healthcare'}
+      </p>
+    </div>
+  </div>
+</div>
 
         {/* Right side - Signup Form */}
         <div className="w-full max-w-md mx-auto">
           <Card className="shadow-xl">
             <CardHeader className="text-center">
-              <CardTitle className="text-2xl">Create Account</CardTitle>
+              <CardTitle className="text-2xl">
+                {isDoctor ? 'Doctor Registration' : 'Create Account'}
+              </CardTitle>
               <CardDescription>
-                Join AyurSamhita - Your Complete Healthcare Platform
+                {isDoctor 
+                  ? 'Join AyurSamhita as a Healthcare Provider' 
+                  : 'Join AyurSamhita - Your Complete Healthcare Platform'
+                }
               </CardDescription>
             </CardHeader>
             
             <CardContent className="space-y-6">
-              {/* Google Sign-In Button */}
-              <div className="space-y-4">
-                <div id="googleSignInButton"></div>
-                {isGoogleLoading && (
-                  <div className="flex items-center justify-center">
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    <span className="text-sm text-muted-foreground">Signing in with Google...</span>
-                  </div>
-                )}
-              </div>
+              {/* Google Sign-In Button - Only for Patients */}
+              {!isDoctor && (
+                <div className="space-y-4">
+                  <div id="googleSignInButton"></div>
+                  {isGoogleLoading && (
+                    <div className="flex items-center justify-center">
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      <span className="text-sm text-muted-foreground">Signing in with Google...</span>
+                    </div>
+                  )}
+                </div>
+              )}
 
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <Separator className="w-full" />
+              {!isDoctor && (
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <Separator className="w-full" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-2 text-muted-foreground">Or continue with email</span>
+                  </div>
                 </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-card px-2 text-muted-foreground">Or continue with email</span>
-                </div>
-              </div>
+              )}
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Account Type Selection */}
@@ -422,16 +555,176 @@ export const SignupPage: React.FC = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="contactNumber">Contact Number</Label>
-                    <Input
-                      id="contactNumber"
-                      name="contactNumber"
-                      type="tel"
-                      placeholder="Enter your phone number"
-                      value={formData.contactNumber}
-                      onChange={handleChange}
-                      required
-                    />
+                  <Input
+                    id="contactNumber"
+                    name="contactNumber"
+                    type="tel"
+                    placeholder="Enter your phone number"
+                    value={formData.contactNumber}
+                    onChange={handleChange}
+                    required
+                  />
                 </div>
+
+                {/* Doctor-specific fields */}
+                {isDoctor && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="medicalLicenseNumber">Medical License Number</Label>
+                      <Input
+                        id="medicalLicenseNumber"
+                        name="medicalLicenseNumber"
+                        type="text"
+                        placeholder="Enter your medical license number"
+                        value={formData.medicalLicenseNumber}
+                        onChange={handleChange}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="specialization">Specialization</Label>
+                      <Input
+                        id="specialization"
+                        name="specialization"
+                        type="text"
+                        placeholder="e.g., Cardiology, Dermatology"
+                        value={formData.specialization}
+                        onChange={handleChange}
+                        required
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="consultantFee">Consultant Fee (₹)</Label>
+                        <Input
+                          id="consultantFee"
+                          name="consultantFee"
+                          type="number"
+                          placeholder="Fee amount"
+                          value={formData.consultantFee}
+                          onChange={handleChange}
+                          min="0"
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="experience">Experience (Years)</Label>
+                        <Input
+                          id="experience"
+                          name="experience"
+                          type="number"
+                          placeholder="Years of experience"
+                          value={formData.experience}
+                          onChange={handleChange}
+                          min="0"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="degrees">Degrees & Qualifications</Label>
+                      <Input
+                        id="degrees"
+                        name="degrees"
+                        type="text"
+                        placeholder="e.g., MBBS, MD, MS"
+                        value={formData.degrees}
+                        onChange={handleChange}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="certification">Certifications</Label>
+                      <Input
+                        id="certification"
+                        name="certification"
+                        type="text"
+                        placeholder="Additional certifications"
+                        value={formData.certification}
+                        onChange={handleChange}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Available Days</Label>
+                      <div className="grid grid-cols-4 gap-2">
+                        {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => (
+                          <div key={day} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`day-${day}`}
+                              checked={formData.availableDays.includes(day)}
+                              onCheckedChange={() => handleAvailableDaysChange(day)}
+                            />
+                            <Label htmlFor={`day-${day}`} className="text-sm">
+                              {day.slice(0, 3)}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="timeStart">Available From</Label>
+                        <Input
+                          id="timeStart"
+                          type="time"
+                          value={formData.availableTimeSlot.start}
+                          onChange={(e) => handleTimeSlotChange('start', e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="timeEnd">Available Until</Label>
+                        <Input
+                          id="timeEnd"
+                          type="time"
+                          value={formData.availableTimeSlot.end}
+                          onChange={(e) => handleTimeSlotChange('end', e.target.value)}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="medicalCertificate">
+                        Medical Certificate
+                      </Label>
+                      <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-4 text-center">
+                        <Input
+                          id="medicalCertificate"
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          onChange={handleFileChange}
+                          className="hidden"
+                        />
+                        <Label 
+                          htmlFor="medicalCertificate" 
+                          className="cursor-pointer flex flex-col items-center space-y-2"
+                        >
+                          <Upload className="h-8 w-8 text-muted-foreground" />
+                          <span className="text-sm font-medium">
+                            {medicalCertificateFile ? medicalCertificateFile.name : 'Upload Medical Certificate'}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            PDF, JPG, PNG up to 5MB
+                          </span>
+                        </Label>
+                      </div>
+                      {medicalCertificateFile && (
+                        <div className="flex items-center space-x-2 text-sm text-green-600">
+                          <FileText className="h-4 w-4" />
+                          <span>Certificate uploaded successfully</span>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
 
                 <div className="space-y-2">
                   <Label htmlFor="password">Password</Label>
@@ -524,10 +817,10 @@ export const SignupPage: React.FC = () => {
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating account...
+                      {isDoctor ? 'Verifying...' : 'Creating account...'}
                     </>
                   ) : (
-                    'Create Account'
+                    isDoctor ? 'Verify and Create Account' : 'Create Account'
                   )}
                 </Button>
               </form>
@@ -549,7 +842,6 @@ export const SignupPage: React.FC = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               <span>Terms of Service</span>
-              
             </DialogTitle>
             <DialogDescription>
               Section {currentSection + 1} of {termsSections.length} • Last updated: {new Date().toLocaleDateString()}
@@ -615,7 +907,6 @@ export const SignupPage: React.FC = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               <span>Privacy Policy</span>
-              
             </DialogTitle>
             <DialogDescription>
               Section {currentSection + 1} of {privacySections.length} • Last updated: {new Date().toLocaleDateString()}
