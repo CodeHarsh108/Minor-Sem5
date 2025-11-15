@@ -19,6 +19,7 @@ import { Avatar, AvatarFallback } from './components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './components/ui/dropdown-menu';
 
 const API_BASE_URL = 'http://localhost:8002/api/v1';
+const GOOGLE_CLIENT_ID = '172222448657-8qanqq7lktmbl11t9431sjoujk73254k.apps.googleusercontent.com';
 
 // User interface matching your backend
 interface User {
@@ -37,8 +38,6 @@ interface User {
   name?: string;
 }
 
-
-
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
@@ -52,6 +51,7 @@ interface AuthContextType {
   ) => Promise<void>;
   logout: () => Promise<void>;
   loading: boolean;
+  googleLogin: (credential: string) => Promise<void>;
   updateUser?: (userData: Partial<User>) => void;
 }
 
@@ -118,6 +118,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   const clearToken = () => {
     document.cookie = 'access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     document.cookie = 'refresh_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    localStorage.removeItem('user');
   };
 
   const signup = async (
@@ -183,7 +184,8 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         contactNumber: userData.contactNumber,
         dateOfBirth: userData.dateOfBirth,
         gender: userData.gender,
-        bloodGroup: userData.bloodGroup
+        bloodGroup: userData.bloodGroup,
+        verified: userData.verified
       };
 
       setUser(userInfo);
@@ -197,6 +199,50 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     }
   };
 
+  const googleLogin = async (credential: string) => {
+    try {
+      const response = await axios.post<{
+        success: boolean;
+        message: string;
+        user: any;
+        token?: string;
+        access_token?: string;
+      }>(`${API_BASE_URL}/auth/google`, {
+        credential
+      });
+
+      const { user: userData, token, access_token } = response.data;
+      
+      const authToken = token || access_token;
+      
+      if (authToken) {
+        document.cookie = `access_token=${authToken}; path=/; max-age=28800;`;
+      }
+
+      const userInfo: User = {
+        id: userData.id || userData._id,
+        _id: userData._id,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        email: userData.email,
+        accountType: userData.accountType,
+        image: userData.image,
+        contactNumber: userData.contactNumber,
+        dateOfBirth: userData.dateOfBirth,
+        gender: userData.gender,
+        bloodGroup: userData.bloodGroup,
+        verified: userData.verified
+      };
+
+      setUser(userInfo);
+      localStorage.setItem('user', JSON.stringify(userInfo));
+      
+    } catch (error: any) {
+      console.error('Google login error:', error);
+      throw error;
+    }
+  };
+
   const logout = async () => {
     try {
       await axios.get(`${API_BASE_URL}/auth/logout`);
@@ -205,7 +251,14 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     } finally {
       setUser(null);
       clearToken();
-      localStorage.removeItem('user');
+    }
+  };
+
+  const updateUser = (userData: Partial<User>) => {
+    if (user) {
+      const updatedUser = { ...user, ...userData };
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
     }
   };
 
@@ -213,7 +266,12 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
     if (savedUser) {
-      setUser(JSON.parse(savedUser));
+      try {
+        setUser(JSON.parse(savedUser));
+      } catch (error) {
+        console.error('Error parsing saved user:', error);
+        localStorage.removeItem('user');
+      }
     }
     setLoading(false);
   }, []);
@@ -223,6 +281,8 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     login,
     signup,
     logout,
+    googleLogin,
+    updateUser,
     loading
   }), [user, loading]);
 
@@ -314,22 +374,19 @@ const Navigation: React.FC = () => {
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
 
-  // In your Navigation component, add this useEffect:
-useEffect(() => {
-  const handleUserDataUpdate = (event: CustomEvent) => {
-    const { firstName, lastName } = event.detail;
-    // Update your local state or context here
-    // This will trigger a re-render with new initials
-  };
+  useEffect(() => {
+    const handleUserDataUpdate = (event: CustomEvent) => {
+      const { firstName, lastName } = event.detail;
+      // Update your local state or context here
+    };
 
-  window.addEventListener('userDataUpdated', handleUserDataUpdate as EventListener);
-  
-  return () => {
-    window.removeEventListener('userDataUpdated', handleUserDataUpdate as EventListener);
-  };
-}, []);
+    window.addEventListener('userDataUpdated', handleUserDataUpdate as EventListener);
+    
+    return () => {
+      window.removeEventListener('userDataUpdated', handleUserDataUpdate as EventListener);
+    };
+  }, []);
 
-  // Check if we should show the back button (not on home page or auth pages)
   const showBackButton = location.pathname !== '/' && 
                          location.pathname !== '/login' && 
                          location.pathname !== '/signup' && 
@@ -388,7 +445,7 @@ useEffect(() => {
               </Button>
             )}
             <Link to="/" className="flex items-center space-x-2">
-          <img src="/logo.jpg" alt="ॐ" className='h-12 w-auto' />
+              <img src="/logo.jpg" alt="ॐ" className='h-12 w-auto' />
               <span className="text-xl font-semibold text-foreground">AyurSamhita Healthcare Platform</span>
             </Link>
           </div>
@@ -555,6 +612,28 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   return <>{children}</>;
 };
 
+// Public Route component (redirect to dashboard if already logged in)
+const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex items-center space-x-2">
+          <img src="/logo.jpg" alt="ॐ" className='h-12 w-auto'/>
+          <span className="text-lg text-muted-foreground">Loading...</span>
+        </div>
+      </div>
+    );
+  }
+  
+  if (user) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  return <>{children}</>;
+};
+
 // Error Boundary Component
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -578,7 +657,7 @@ class ErrorBoundary extends React.Component<
       return (
         <div className="min-h-screen bg-background flex items-center justify-center px-4">
           <div className="text-center">
-v            <h1 className="text-2xl font-bold text-foreground mb-2">Something went wrong</h1>
+            <h1 className="text-2xl font-bold text-foreground mb-2">Something went wrong</h1>
             <p className="text-muted-foreground mb-4">
               We apologize for the inconvenience. Please try refreshing the page.
             </p>
@@ -606,9 +685,30 @@ export default function App() {
               <main>
                 <Routes>
                   <Route path="/" element={<LandingPage />} />
-                  <Route path="/login" element={<LoginPage />} />
-                  <Route path="/signup" element={<SignupPage />} />
-                  <Route path="/verify-email" element={<EmailVerificationPage />} />
+                  <Route 
+                    path="/login" 
+                    element={
+                      <PublicRoute>
+                        <LoginPage />
+                      </PublicRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/signup" 
+                    element={
+                      <PublicRoute>
+                        <SignupPage />
+                      </PublicRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/verify-email" 
+                    element={
+                      <PublicRoute>
+                        <EmailVerificationPage />
+                      </PublicRoute>
+                    } 
+                  />
                   <Route path="/herbs" element={<HerbBrowser />} />
                   <Route path="/doctors" element={<DoctorSearch />} />
                   <Route 

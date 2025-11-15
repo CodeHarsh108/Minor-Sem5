@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Toaster, toast } from 'sonner';
 import { Eye, EyeOff, Mail, Lock, User, Loader2, Stethoscope, User as PatientIcon, X, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -19,6 +19,12 @@ import {
 } from '../ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 
+declare global {
+  interface Window {
+    google: any;
+  }
+}
+
 export const SignupPage: React.FC = () => {
   const [formData, setFormData] = useState({
     firstName: '',
@@ -33,11 +39,12 @@ export const SignupPage: React.FC = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showTermsDialog, setShowTermsDialog] = useState(false);
   const [showPrivacyDialog, setShowPrivacyDialog] = useState(false);
   const [currentSection, setCurrentSection] = useState(0);
   
-  const { signup } = useAuth();
+  const { signup, googleLogin } = useAuth();
   const navigate = useNavigate();
 
   const termsSections = [
@@ -141,6 +148,63 @@ export const SignupPage: React.FC = () => {
       content: "For questions about privacy or your data, contact our Data Protection Officer at privacy@ayursamhita.com"
     }
   ];
+
+  // Initialize Google Sign-In
+  useEffect(() => {
+    const initializeGoogleSignIn = () => {
+      if (window.google) {
+        window.google.accounts.id.initialize({
+          client_id: '172222448657-8qanqq7lktmbl11t9431sjoujk73254k.apps.googleusercontent.com',
+          callback: handleGoogleSignIn,
+          auto_select: false,
+          cancel_on_tap_outside: true,
+        });
+        
+        // Render Google Sign-In button
+        window.google.accounts.id.renderButton(
+          document.getElementById('googleSignInButton'),
+          {
+            theme: 'outline',
+            size: 'large',
+            width: '100%',
+            text: 'signup_with',
+            logo_alignment: 'left'
+          }
+        );
+      }
+    };
+
+    // Load Google Sign-In script
+    const loadGoogleScript = () => {
+      if (!document.querySelector('#google-signin-script')) {
+        const script = document.createElement('script');
+        script.id = 'google-signin-script';
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.async = true;
+        script.defer = true;
+        script.onload = initializeGoogleSignIn;
+        document.head.appendChild(script);
+      } else {
+        initializeGoogleSignIn();
+      }
+    };
+
+    loadGoogleScript();
+  }, []);
+
+  const handleGoogleSignIn = async (response: any) => {
+    setIsGoogleLoading(true);
+    try {
+      await googleLogin(response.credential);
+      toast.success('Signed in successfully with Google!');
+      navigate('/dashboard');
+    } catch (error: any) {
+      console.error('Google sign-in error:', error);
+      toast.error(error?.response?.data?.message || error?.message || 'Google sign-in failed. Please try again.');
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({
@@ -259,6 +323,26 @@ export const SignupPage: React.FC = () => {
             </CardHeader>
             
             <CardContent className="space-y-6">
+              {/* Google Sign-In Button */}
+              <div className="space-y-4">
+                <div id="googleSignInButton"></div>
+                {isGoogleLoading && (
+                  <div className="flex items-center justify-center">
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    <span className="text-sm text-muted-foreground">Signing in with Google...</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <Separator className="w-full" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">Or continue with email</span>
+                </div>
+              </div>
+
               <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Account Type Selection */}
                 <div className="space-y-2">
@@ -338,15 +422,15 @@ export const SignupPage: React.FC = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="contactNumber">Contact Number</Label>
-                  <Input
-                    id="contactNumber"
-                    name="contactNumber"
-                    type="tel"
-                    placeholder="Enter your phone number"
-                    value={formData.contactNumber}
-                    onChange={handleChange}
-                    required
-                  />
+                    <Input
+                      id="contactNumber"
+                      name="contactNumber"
+                      type="tel"
+                      placeholder="Enter your phone number"
+                      value={formData.contactNumber}
+                      onChange={handleChange}
+                      required
+                    />
                 </div>
 
                 <div className="space-y-2">

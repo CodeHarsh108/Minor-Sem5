@@ -12,7 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { useAuth } from '../../App';
 import axios from 'axios';
 
-const API_BASE_URL =  'http://localhost:8002/api/v1';
+const API_BASE_URL = 'http://localhost:8002/api/v1';
 
 // Types based on your API response
 interface User {
@@ -30,7 +30,7 @@ interface User {
 
 interface Doctor {
   _id: string;
-  user: User;
+  user: User | null; // Allow user to be null
   specialization: string;
   experience: number;
   consultantFee: number;
@@ -74,7 +74,12 @@ const DoctorDetailModal: React.FC<{ doctor: Doctor; children: React.ReactNode }>
     return experience;
   };
 
-  const doctorName = `${doctor.user.firstName} ${doctor.user.lastName}`;
+  // Safe user data access
+  const doctorName = doctor.user ? `${doctor.user.firstName} ${doctor.user.lastName}` : 'Unknown Doctor';
+  const userGender = doctor.user?.gender || 'Not specified';
+  const userBloodGroup = doctor.user?.bloodGroup || 'Not specified';
+  const userContact = doctor.user?.contactNumber || 'Not specified';
+  const userImage = doctor.user?.image;
 
   return (
     <Dialog>
@@ -85,9 +90,9 @@ const DoctorDetailModal: React.FC<{ doctor: Doctor; children: React.ReactNode }>
         <DialogHeader>
           <div className="flex items-start space-x-4">
             <Avatar className="w-20 h-20">
-              <AvatarImage src={doctor.user.image} alt={doctorName} />
+              <AvatarImage src={userImage} alt={doctorName} />
               <AvatarFallback>
-                {doctor.user.firstName[0]}{doctor.user.lastName[0]}
+                {doctor.user ? `${doctor.user.firstName[0]}${doctor.user.lastName[0]}` : 'DR'}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1">
@@ -118,10 +123,10 @@ const DoctorDetailModal: React.FC<{ doctor: Doctor; children: React.ReactNode }>
           
           <TabsContent value="about" className="space-y-6">
             <div>
-              <h4 className="font-semibold mb-2">About Dr. {doctor.user.lastName}</h4>
+              <h4 className="font-semibold mb-2">About Dr. {doctor.user?.lastName || 'Unknown'}</h4>
               <p className="text-muted-foreground">
                 Dr. {doctorName} is a specialized medical professional with {calculateYearsOfExperience(doctor.experience)} years of experience in {doctor.specialization?.split(' - ')[0] || 'medicine'}. 
-                {doctor.user.gender === 'Female' ? ' She' : ' He'} provides comprehensive healthcare services with a patient-centered approach.
+                {userGender === 'Female' ? ' She' : ' He'} provides comprehensive healthcare services with a patient-centered approach.
               </p>
             </div>
             
@@ -138,9 +143,9 @@ const DoctorDetailModal: React.FC<{ doctor: Doctor; children: React.ReactNode }>
               <div>
                 <h4 className="font-semibold mb-2">Personal Details</h4>
                 <div className="space-y-2 text-sm">
-                  <div><strong>Gender:</strong> {doctor.user.gender || 'Not specified'}</div>
-                  <div><strong>Blood Group:</strong> {doctor.user.bloodGroup || 'Not specified'}</div>
-                  <div><strong>Contact:</strong> {doctor.user.contactNumber}</div>
+                  <div><strong>Gender:</strong> {userGender}</div>
+                  <div><strong>Blood Group:</strong> {userBloodGroup}</div>
+                  <div><strong>Contact:</strong> {userContact}</div>
                 </div>
               </div>
             </div>
@@ -312,26 +317,33 @@ export const DoctorSearch: React.FC = () => {
 
   const filteredDoctors = useMemo(() => {
     let filtered = doctors.filter(doctor => {
-      const doctorName = `${doctor.user.firstName} ${doctor.user.lastName}`.toLowerCase();
+      // Skip doctors with null user
+      if (!doctor.user) return false;
+      
+      const doctorName = `${doctor.user.firstName || ''} ${doctor.user.lastName || ''}`.toLowerCase();
       const matchesSearch = doctorName.includes(searchTerm.toLowerCase()) ||
-                           doctor.specialization?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           doctor.degrees?.toLowerCase().includes(searchTerm.toLowerCase());
+                           (doctor.specialization?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+                           (doctor.degrees?.toLowerCase() || '').includes(searchTerm.toLowerCase());
       
       const matchesSpecialization = selectedSpecialization === 'All Specializations' || 
-                                   doctor.specialization?.includes(selectedSpecialization);
+                                   (doctor.specialization?.includes(selectedSpecialization) || false);
 
       return matchesSearch && matchesSpecialization;
     });
 
-    // Sort doctors
+    // Sort doctors with null checks
     filtered.sort((a, b) => {
+      // Handle cases where user might be null
+      const aName = a.user ? `${a.user.firstName} ${a.user.lastName}` : '';
+      const bName = b.user ? `${b.user.firstName} ${b.user.lastName}` : '';
+      
       switch (sortBy) {
         case 'experience':
-          return b.experience - a.experience;
+          return (b.experience || 0) - (a.experience || 0);
         case 'fee':
-          return a.consultantFee - b.consultantFee;
+          return (a.consultantFee || 0) - (b.consultantFee || 0);
         case 'name':
-          return `${a.user.firstName} ${a.user.lastName}`.localeCompare(`${b.user.firstName} ${b.user.lastName}`);
+          return aName.localeCompare(bName);
         case 'rating':
         default:
           return 0;
@@ -424,8 +436,26 @@ export const DoctorSearch: React.FC = () => {
               </SelectContent>
             </Select>
 
-            
-            
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger>
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="experience">Experience</SelectItem>
+                <SelectItem value="fee">Consultation Fee</SelectItem>
+                <SelectItem value="name">Name</SelectItem>
+                <SelectItem value="rating">Rating</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Button 
+              variant={showVideoOnly ? "default" : "outline"} 
+              onClick={() => setShowVideoOnly(!showVideoOnly)}
+              className="flex items-center space-x-2"
+            >
+              <Video className="h-4 w-4" />
+              <span>{showVideoOnly ? 'Video Only' : 'All Types'}</span>
+            </Button>
           </div>
 
           <div className="flex items-center justify-between text-sm text-muted-foreground">
@@ -440,6 +470,9 @@ export const DoctorSearch: React.FC = () => {
         {/* Doctors Grid */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredDoctors.map(doctor => {
+            // Skip rendering if user is null
+            if (!doctor.user) return null;
+            
             const doctorName = `${doctor.user.firstName} ${doctor.user.lastName}`;
             const mainSpecialization = doctor.specialization?.split(' - ')[0] || 'General Medicine';
             const subSpecializations = doctor.specialization?.split(' - ')[1]?.split(', ') || [];
@@ -467,7 +500,9 @@ export const DoctorSearch: React.FC = () => {
                       size="sm"
                       onClick={() => toggleFavorite(doctor._id)}
                     >
-                      
+                      <Heart 
+                        className={`h-4 w-4 ${favorites.includes(doctor._id) ? 'fill-red-500 text-red-500' : 'text-muted-foreground'}`} 
+                      />
                     </Button>
                   </div>
                 </CardHeader>
