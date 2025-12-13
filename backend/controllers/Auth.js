@@ -25,6 +25,19 @@ exports.signup = async (req, res) => {
       message: "Email address is not valid" 
     });
   }
+   console.log('=== SIGNUP REQUEST BODY ===');
+  console.log('Basic info:', { firstName, lastName, email, accountType });
+   console.log('Doctor-specific data:', {
+    medicalLicenseNumber: req.body.medicalLicenseNumber,
+    specialization: req.body.specialization,
+    consultantFee: req.body.consultantFee,
+    experience: req.body.experience,
+    degrees: req.body.degrees,
+    certification: req.body.certification,
+    availableDays: req.body.availableDays,
+    availableTimeSlot: req.body.availableTimeSlot
+  });
+  console.log('==========================');
 
   try {
     // Check if user already exists
@@ -60,10 +73,24 @@ exports.signup = async (req, res) => {
     }
 
     // Create profile based on account type
-    if (accountType === "Doctor") {
-      const newDoctor = new Doctor({ user: newUser._id });
+     if (accountType === "Doctor") {
+      const doctorData = {
+        user: newUser._id,
+        // Include all doctor-specific fields from registration
+        medicalLicenseNumber: req.body.medicalLicenseNumber,
+        specialization: req.body.specialization,
+        consultantFee: req.body.consultantFee,
+        experience: req.body.experience,
+        degrees: req.body.degrees,
+        certification: req.body.certification,
+        availableDays: req.body.availableDays,
+        availableTimeSlot: req.body.availableTimeSlot,
+        approvalStatus: false // Default to pending approval
+      };
+      
+      const newDoctor = new Doctor(doctorData);
       await newDoctor.save();
-    } else if (accountType === "Patient") {
+    }else if (accountType === "Patient") {
       const newPatient = new Patient({ user: newUser._id });
       await newPatient.save();
     }

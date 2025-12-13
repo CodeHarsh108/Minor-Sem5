@@ -168,6 +168,89 @@ exports.getAllDoctors = async (req, res) => {
   }
 };
 
+// Add this to your User controller (controllers/User.js)
+exports.fixDoctorProfile = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    // Find the doctor by user ID
+    const doctor = await Doctor.findOne({ user: userId });
+    
+    if (!doctor) {
+      return res.status(404).json({
+        success: false,
+        message: "Doctor not found"
+      });
+    }
+
+    // Update with default/real data
+    const updatedDoctor = await Doctor.findOneAndUpdate(
+      { user: userId },
+      {
+        specialization: doctor.specialization || "General Medicine",
+        experience: doctor.experience || 5,
+        consultantFee: doctor.consultantFee || 800,
+        degrees: doctor.degrees || "MBBS, MD",
+        certification: doctor.certification || "Medical Board Certified",
+        availableDays: doctor.availableDays && doctor.availableDays.length > 0 
+          ? doctor.availableDays 
+          : ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+        availableTimeSlot: doctor.availableTimeSlot || {
+          start: "09:00",
+          end: "17:00"
+        },
+        approvalStatus: true
+      },
+      { new: true }
+    ).populate("user");
+
+    console.log('Updated doctor:', updatedDoctor);
+
+    res.status(200).json({
+      success: true,
+      message: "Doctor profile updated successfully",
+      doctor: updatedDoctor
+    });
+  } catch (error) {
+    console.error('Error fixing doctor profile:', error);
+    res.status(500).json({
+      success: false,
+      message: "Error updating doctor profile"
+    });
+  }
+};
+
+
+// Get doctor by user ID
+exports.getDoctorByUserId = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const doctor = await Doctor.findOne({ user: userId })
+      .populate("user", "firstName lastName email contactNumber image accountType gender bloodGroup dateOfBirth");
+
+    if (!doctor) {
+      return res.status(404).json({
+        success: false,
+        message: "Doctor profile not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Doctor profile retrieved successfully",
+      doctor,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Server error. Please try again later.",
+    });
+  }
+};
+
+
 // controllers/diseaseController.js
 
 exports.getMedicines = async (req, res) => {
@@ -473,17 +556,30 @@ exports.getBookedTimeSlots = async (req, res) => {
 };
 
 
-exports.getAppointmentsByDoctor = async (req, res) => { // Removed 'next' parameter
+exports.getAppointmentsByDoctor = async (req, res) => {
   try {
     const doctorId = req.params.doctorId;
 
-    const appointments = await Appointment.find({ doctor: doctorId }).populate(
-      "patient",
-      "firstName lastName contactNumber accountType gender"
-    );
+    // First, get the doctor to find their user ID
+    const doctor = await Doctor.findById(doctorId);
+    if (!doctor) {
+      return res.status(404).json({
+        success: false,
+        message: "Doctor not found"
+      });
+    }
+
+    // Find appointments for this doctor and populate patient data properly
+    const appointments = await Appointment.find({ doctor: doctorId })
+      .populate({
+        path: "patient",
+        select: "firstName lastName email contactNumber gender accountType",
+        model: "User"
+      })
+      .sort({ date: 1, "timeSlot.start": 1 });
 
     if (!appointments || appointments.length === 0) {
-      return res.status(200).json({ // Changed to 200 for empty results
+      return res.status(200).json({
         success: true,
         message: "No appointments found for this doctor",
         data: []
@@ -504,6 +600,7 @@ exports.getAppointmentsByDoctor = async (req, res) => { // Removed 'next' parame
     });
   }
 };
+
 
 exports.getAppointmentsByPatient = async (req, res) => { // Removed 'next' parameter
   try {

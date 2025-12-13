@@ -7,6 +7,10 @@ const doctorSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    medicalLicenseNumber: {  // ADD THIS FIELD
+      type: String,
+      trim: true,
+    },
     consultantFee: {
       type: Number,
     },

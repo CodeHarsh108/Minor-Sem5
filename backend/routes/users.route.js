@@ -12,11 +12,14 @@ const {
   deleteAppointment,
   bookAppointment,
   getBookedTimeSlots,
+   getDoctorByUserId,
 } = require("../controllers/User.js");
 
 // Profile routes
 router.post("/update-profile/:id", updateDoctorProfile);
 router.get("/doctors", getAllDoctors);
+router.get("/doctor/:userId", getDoctorByUserId);
+
 
 // Medicine routes
 router.get("/medicines", getMedicines);
