@@ -130,65 +130,121 @@ export const AppointmentBooking: React.FC = () => {
     }
   }, [doctor]);
 
-  const generateTimeSlots = (doctorData: Doctor): AvailableSlot[] => {
-    const slots: AvailableSlot[] = [];
-    const today = new Date();
-    
-    // Get doctor's available days and time
-    const availableDays = doctorData.availableDays || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-    const startTime = doctorData.availableTimeSlot?.start || "09:00";
-    const endTime = doctorData.availableTimeSlot?.end || "17:00";
-    
-    // Convert time to 12-hour format
-    const formatTime = (timeString: string) => {
+  // Update the generateTimeSlots function to be more robust:
+const generateTimeSlots = (doctorData: Doctor): AvailableSlot[] => {
+  const slots: AvailableSlot[] = [];
+  const today = new Date();
+  
+  // Safe defaults for doctor availability
+  const availableDays = doctorData.availableDays && doctorData.availableDays.length > 0 
+    ? doctorData.availableDays 
+    : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+  
+  const startTime = doctorData.availableTimeSlot?.start || "09:00";
+  const endTime = doctorData.availableTimeSlot?.end || "17:00";
+  
+  console.log('Doctor availability:', {
+    availableDays,
+    startTime,
+    endTime,
+    doctorData
+  });
+  
+  // Convert time to 12-hour format
+  const formatTime = (timeString: string) => {
+    try {
       const [hours, minutes] = timeString.split(':');
       const hour = parseInt(hours);
       const ampm = hour >= 12 ? 'PM' : 'AM';
       const formattedHour = hour % 12 || 12;
       return `${formattedHour}:${minutes} ${ampm}`;
-    };
+    } catch (error) {
+      console.error('Error formatting time:', error);
+      return '09:00 AM'; // Default fallback
+    }
+  };
 
-    // Generate slots for the next 7 days
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() + i);
+  // Generate slots for the next 7 days
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() + i);
+    
+    const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+    
+    // Check if doctor is available on this day
+    if (availableDays.includes(dayName)) {
+      const timeSlots = [];
       
-      const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
-      
-      // Check if doctor is available on this day
-      if (availableDays.includes(dayName)) {
-        const timeSlots = [];
+      try {
         const startHour = parseInt(startTime.split(':')[0]);
         const endHour = parseInt(endTime.split(':')[0]);
         
+        // Validate time ranges
+        const validStartHour = Math.max(0, Math.min(23, startHour));
+        const validEndHour = Math.max(validStartHour + 1, Math.min(24, endHour));
+        
         // Generate time slots every 30 minutes
-        for (let hour = startHour; hour < endHour; hour++) {
+        for (let hour = validStartHour; hour < validEndHour; hour++) {
           for (let minute = 0; minute < 60; minute += 30) {
             const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
             timeSlots.push(formatTime(timeString));
           }
         }
-        
-        // Randomly remove some slots to simulate booked appointments
-        const availableTimeSlots = timeSlots.filter(() => Math.random() > 0.3);
-        
-        if (availableTimeSlots.length > 0) {
-          slots.push({
-            date: date.toDateString(),
-            slots: availableTimeSlots
-          });
+      } catch (error) {
+        console.error('Error generating time slots:', error);
+        // Fallback: generate default slots
+        for (let hour = 9; hour < 17; hour++) {
+          timeSlots.push(formatTime(`${hour}:00`));
+          timeSlots.push(formatTime(`${hour}:30`));
         }
       }
+      
+      // Randomly remove some slots to simulate booked appointments (keep 70% available)
+      const availableTimeSlots = timeSlots.filter(() => Math.random() > 0.3);
+      
+      if (availableTimeSlots.length > 0) {
+        slots.push({
+          date: date.toDateString(),
+          slots: availableTimeSlots
+        });
+      }
     }
+  }
+  
+  console.log('Generated slots:', slots);
+  return slots;
+};
+
+// Add a useEffect to debug the availability
+useEffect(() => {
+  if (doctor) {
+    console.log('Doctor data for booking:', doctor);
+    const slots = generateTimeSlots(doctor);
+    setAvailableSlots(slots);
     
-    return slots;
-  };
+    if (slots.length === 0) {
+      toast.error('No available time slots found for this doctor. Please try another doctor.');
+    }
+  }
+}, [doctor]);
 
   useEffect(() => {
     if (!doctor && !loading) {
       navigate('/doctors');
     }
   }, [doctor, loading, navigate]);
+
+  // Helper function to safely split specialization
+  const getSpecializations = (specialization: string | undefined): string[] => {
+    if (!specialization) return ['General Medicine'];
+    
+    try {
+      return specialization.split(', ').map(spec => spec.trim()).filter(spec => spec.length > 0);
+    } catch (error) {
+      console.error('Error parsing specialization:', error);
+      return ['General Medicine'];
+    }
+  };
 
   if (loading) {
     return (
@@ -268,7 +324,7 @@ export const AppointmentBooking: React.FC = () => {
             id: doctor._id,
             name: `Dr. ${doctor.user.firstName} ${doctor.user.lastName}`,
             image: doctor.user.image,
-            specializations: [doctor.specialization],
+            specializations: getSpecializations(doctor.specialization),
             experience: doctor.experience,
             consultationFee: `₹${doctor.consultantFee}`,
             videoConsultation: true
@@ -553,6 +609,7 @@ export const AppointmentBooking: React.FC = () => {
 
   const doctorName = `Dr. ${doctor.user.firstName} ${doctor.user.lastName}`;
   const doctorImage = doctor.user.image || "/api/placeholder/150/150";
+  const specializations = getSpecializations(doctor.specialization);
 
   return (
     <div className="min-h-screen bg-background py-8 px-4">
@@ -585,8 +642,8 @@ export const AppointmentBooking: React.FC = () => {
                 <div>
                   <h4 className="font-medium mb-2">Specializations</h4>
                   <div className="flex flex-wrap gap-1">
-                    {doctor.specialization.split(', ').map((spec, index) => (
-                      <Badge key={index} variant="secondary" className="text-xs">{spec.trim()}</Badge>
+                    {specializations.map((spec, index) => (
+                      <Badge key={index} variant="secondary" className="text-xs">{spec}</Badge>
                     ))}
                   </div>
                 </div>

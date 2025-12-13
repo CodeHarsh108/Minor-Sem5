@@ -350,52 +350,47 @@ export const SignupPage: React.FC = () => {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) return;
-    
-    setIsLoading(true);
+  e.preventDefault();
+  
+  if (!validateForm()) return;
+  
+  setIsLoading(true);
 
-    try {
-      // For doctors, simulate verification and auto-login
-      if (formData.accountType === 'Doctor') {
-        // First create the account
-        await signup(
-          formData.firstName,
-          formData.lastName,
-          formData.email,
-          formData.contactNumber,
-          formData.password,
-          formData.accountType
-        );
+  try {
+    // Prepare ALL user data including doctor-specific fields
+    const userData: any = {
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      email: formData.email,
+      contactNumber: formData.contactNumber,
+      password: formData.password,
+      accountType: formData.accountType
+    };
 
-        // Simulate doctor verification (in real app, this would be an API call)
-        setTimeout(() => {
-          toast.success('Doctor account verified successfully! You can now log in.');
-          // Auto-login the doctor
-          // In a real app, you would call login here with the credentials
-          navigate('/dashboard');
-        }, 2000);
-      } else {
-        // Regular patient signup
-        await signup(
-          formData.firstName,
-          formData.lastName,
-          formData.email,
-          formData.contactNumber,
-          formData.password,
-          formData.accountType
-        );
-        toast.success('Account created successfully!');
-        navigate('/dashboard');
-      }
-    } catch (error: any) {
-      console.error('Signup error:', error);
-      toast.error(error?.response?.data?.message || error?.message || 'Signup failed. Please try again.');
-    } finally {
-      setIsLoading(false);
+    // Add ALL doctor-specific fields if signing up as doctor
+    if (formData.accountType === 'Doctor') {
+      userData.medicalLicenseNumber = formData.medicalLicenseNumber;
+      userData.specialization = formData.specialization;
+      userData.consultantFee = parseFloat(formData.consultantFee);
+      userData.experience = parseInt(formData.experience);
+      userData.degrees = formData.degrees;
+      userData.certification = formData.certification;
+      userData.availableDays = formData.availableDays;
+      userData.availableTimeSlot = formData.availableTimeSlot;
     }
-  };
+
+    // Call signup with the complete user data object
+    await signup(userData);
+
+    toast.success('Account created successfully!');
+    navigate('/dashboard');
+  } catch (error: any) {
+    console.error('Signup error:', error);
+    toast.error(error?.response?.data?.message || error?.message || 'Signup failed. Please try again.');
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const nextSection = (sections: any[]) => {
     setCurrentSection(prev => (prev + 1) % sections.length);
@@ -413,7 +408,6 @@ export const SignupPage: React.FC = () => {
       style={{ backgroundImage: 'url("/bg.png")' }}
     >
       <div className="max-w-4xl w-full grid lg:grid-cols-2 gap-8 items-center">
-        {/* Left side - Image */}
         {/* Left side - Image */}
 <div className="hidden lg:block">
   <div className="relative h-full">
@@ -478,7 +472,7 @@ export const SignupPage: React.FC = () => {
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Account Type Selection */}
-                <div className="space-y-2">
+                {/* <div className="space-y-2">
                   <Label htmlFor="accountType">I am a</Label>
                   <Select 
                     value={formData.accountType} 
@@ -502,7 +496,7 @@ export const SignupPage: React.FC = () => {
                       </SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
+                </div> */}
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">

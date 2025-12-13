@@ -18,6 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../ui/dialog';
+import { DoctorDashboard } from './doctor-dashboard';
 
 const API_BASE_URL = 'http://localhost:8002/api/v1';
 
@@ -190,6 +191,12 @@ interface DoctorsResponse {
 export const UserDashboard: React.FC = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
+  
+  // If user is a doctor, render the doctor dashboard
+  if (user?.accountType === 'Doctor') {
+    return <DoctorDashboard />;
+  }
+
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [userActivity, setUserActivity] = useState<UserActivity>({
     totalAppointments: 0,
@@ -537,35 +544,37 @@ export const UserDashboard: React.FC = () => {
     });
   };
 
-  // Fetch doctor profile if user is a doctor
+  // Fetch doctor profile if user is a doctor - This function won't be called for doctors due to early return
   const fetchDoctorProfile = async () => {
-    if (!user || user.accountType !== 'Doctor') return;
+  if (!user) return;
+  
+  try {
+    const response = await axios.get<DoctorsResponse>(`${API_BASE_URL}/user/doctors`, {
+      withCredentials: true
+    });
     
-    try {
-      const response = await axios.get<DoctorsResponse>(`${API_BASE_URL}/user/doctors`, {
-        withCredentials: true
-      });
+    if (response.data.success) {
+      // Safe check for doctor data
+      const currentDoctor = response.data.doctors.find(
+        (doctor: any) => doctor.user && doctor.user._id === (user.id || user._id)
+      );
       
-      if (response.data.success) {
-        const currentDoctor = response.data.doctors.find(
-          doctor => doctor.user._id === (user.id || user._id)
-        );
-        if (currentDoctor) {
-          setDoctorProfile({
-            specialization: currentDoctor.specialization,
-            consultantFee: currentDoctor.consultantFee,
-            experience: currentDoctor.experience,
-            degrees: currentDoctor.degrees,
-            certification: currentDoctor.certification,
-            availableDays: currentDoctor.availableDays,
-            availableTimeSlot: currentDoctor.availableTimeSlot
-          });
-        }
+      if (currentDoctor) {
+        setDoctorProfile({
+          specialization: currentDoctor.specialization,
+          consultantFee: currentDoctor.consultantFee,
+          experience: currentDoctor.experience,
+          degrees: currentDoctor.degrees,
+          certification: currentDoctor.certification,
+          availableDays: currentDoctor.availableDays,
+          availableTimeSlot: currentDoctor.availableTimeSlot
+        });
       }
-    } catch (error) {
-      console.error('Error fetching doctor profile:', error);
     }
-  };
+  } catch (error) {
+    console.error('Error fetching doctor profile:', error);
+  }
+};
 
   const handleDeleteAppointment = async (appointmentId: string) => {
     if (!user) return;
@@ -1028,7 +1037,10 @@ export const UserDashboard: React.FC = () => {
     if (user) {
       initializeUserProfile();
       fetchUserData();
-      fetchDoctorProfile();
+      // Don't fetch doctor profile for doctors since they're redirected to doctor dashboard
+      if (user.accountType !== 'Doctor') {
+        fetchDoctorProfile();
+      }
     }
   }, [user]);
 
@@ -1053,49 +1065,48 @@ export const UserDashboard: React.FC = () => {
   }, [appointments, user, getUserStorageKey]);
 
   // Handle new appointments from payment completion
-  // Handle new appointments from payment completion - FIXED
-useEffect(() => {
-  if (location.state?.newAppointment) {
-    const newAppointmentData = location.state.newAppointment;
-    
-    // Check if appointment already exists to prevent duplicates
-    const appointmentExists = appointments.some(apt => apt._id === newAppointmentData._id);
-    
-    if (!appointmentExists) {
-      const newAppointment: Appointment = {
-        ...newAppointmentData,
-        status: 'upcoming' as const
-      };
+  useEffect(() => {
+    if (location.state?.newAppointment) {
+      const newAppointmentData = location.state.newAppointment;
       
-      const storageKey = getUserStorageKey('userAppointments');
-      const existingAppointments = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      // Check if appointment already exists to prevent duplicates
+      const appointmentExists = appointments.some(apt => apt._id === newAppointmentData._id);
       
-      // Check again in localStorage to be sure
-      const existsInStorage = existingAppointments.some((apt: Appointment) => apt._id === newAppointmentData._id);
-      
-      if (!existsInStorage) {
-        const updatedAppointments = [newAppointment, ...existingAppointments];
-        localStorage.setItem(storageKey, JSON.stringify(updatedAppointments));
+      if (!appointmentExists) {
+        const newAppointment: Appointment = {
+          ...newAppointmentData,
+          status: 'upcoming' as const
+        };
         
-        setAppointments(prev => [newAppointment, ...prev]);
+        const storageKey = getUserStorageKey('userAppointments');
+        const existingAppointments = JSON.parse(localStorage.getItem(storageKey) || '[]');
         
-        const updatedMetrics = calculateHealthMetrics([newAppointment, ...appointments], userActivity.favoriteMedicines);
+        // Check again in localStorage to be sure
+        const existsInStorage = existingAppointments.some((apt: Appointment) => apt._id === newAppointmentData._id);
         
-        setUserActivity(prev => ({
-          ...prev,
-          totalAppointments: prev.totalAppointments + 1,
-          upcomingAppointments: prev.upcomingAppointments + 1,
-          healthMetrics: updatedMetrics,
-          lastActivity: new Date().toLocaleDateString()
-        }));
+        if (!existsInStorage) {
+          const updatedAppointments = [newAppointment, ...existingAppointments];
+          localStorage.setItem(storageKey, JSON.stringify(updatedAppointments));
+          
+          setAppointments(prev => [newAppointment, ...prev]);
+          
+          const updatedMetrics = calculateHealthMetrics([newAppointment, ...appointments], userActivity.favoriteMedicines);
+          
+          setUserActivity(prev => ({
+            ...prev,
+            totalAppointments: prev.totalAppointments + 1,
+            upcomingAppointments: prev.upcomingAppointments + 1,
+            healthMetrics: updatedMetrics,
+            lastActivity: new Date().toLocaleDateString()
+          }));
+          
+          toast.success('Your appointment has been confirmed!');
+        }
         
-        toast.success('Your appointment has been confirmed!');
+        window.history.replaceState({}, document.title);
       }
-      
-      window.history.replaceState({}, document.title);
     }
-  }
-}, [location.state, appointments, userActivity.favoriteMedicines, getUserStorageKey]);
+  }, [location.state, appointments, userActivity.favoriteMedicines, getUserStorageKey]);
 
   if (!user) {
     return (
@@ -2146,38 +2157,8 @@ useEffect(() => {
                   </CardContent>
                 </Card>
 
-                {/* Doctor Profile (if user is a doctor) */}
-                {user?.accountType === 'Doctor' && doctorProfile && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center">
-                        <Stethoscope className="h-4 w-4 mr-2" />
-                        Professional Information
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div>
-                        <label className="text-sm font-medium mb-1 block">Specialization</label>
-                        <p className="text-foreground">{doctorProfile.specialization}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium mb-1 block">Experience</label>
-                        <p className="text-foreground">{doctorProfile.experience} years</p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium mb-1 block">Consultation Fee</label>
-                        <p className="text-foreground">₹{doctorProfile.consultantFee}</p>
-                      </div>
-                      {doctorProfile.degrees && (
-                        <div>
-                          <label className="text-sm font-medium mb-1 block">Degrees</label>
-                          <p className="text-foreground">{doctorProfile.degrees}</p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
-
+                {/* Doctor Profile section removed since doctors are redirected to doctor dashboard */}
+                
                 {/* Account Actions */}
                 <Card>
                   <CardHeader>

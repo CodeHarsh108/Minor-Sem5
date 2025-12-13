@@ -41,19 +41,32 @@ interface User {
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
-  signup: (
-    firstName: string, 
-    lastName: string, 
-    email: string, 
-    contactNumber: string, 
-    password: string, 
-    accountType: string
-  ) => Promise<void>;
+  signup: (userData: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    contactNumber: string;
+    password: string;
+    accountType: string;
+    // Optional doctor fields
+    medicalLicenseNumber?: string;
+    specialization?: string;
+    consultantFee?: number;
+    experience?: number;
+    degrees?: string;
+    certification?: string;
+    availableDays?: string[];
+    availableTimeSlot?: {
+      start: string;
+      end: string;
+    };
+  }) => Promise<void>;
   logout: () => Promise<void>;
   loading: boolean;
   googleLogin: (credential: string) => Promise<void>;
   updateUser?: (userData: Partial<User>) => void;
 }
+
 
 const AuthContext = React.createContext<AuthContextType | null>(null);
 
@@ -121,33 +134,37 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     localStorage.removeItem('user');
   };
 
-  const signup = async (
-    firstName: string,
-    lastName: string,
-    email: string,
-    contactNumber: string,
-    password: string,
-    accountType: string
-  ) => {
-    try {
-      const response = await axios.post(`${API_BASE_URL}/auth/signup`, {
-        firstName,
-        lastName,
-        email,
-        contactNumber,
-        password,
-        accountType
-      });
-
-      if (response.status === 201) {
-        // Auto-login after successful signup
-        await login(email, password);
-      }
-    } catch (error: any) {
-      console.error('Signup error:', error);
-      throw error;
-    }
+  const signup = async (userData: {
+  firstName: string;
+  lastName: string;
+  email: string;
+  contactNumber: string;
+  password: string;
+  accountType: string;
+  medicalLicenseNumber?: string;
+  specialization?: string;
+  consultantFee?: number;
+  experience?: number;
+  degrees?: string;
+  certification?: string;
+  availableDays?: string[];
+  availableTimeSlot?: {
+    start: string;
+    end: string;
   };
+}) => {
+  try {
+    const response = await axios.post(`${API_BASE_URL}/auth/signup`, userData);
+
+    if (response.status === 201) {
+      // Auto-login after successful signup
+      await login(userData.email, userData.password);
+    }
+  } catch (error: any) {
+    console.error('Signup error:', error);
+    throw error;
+  }
+};
 
   const login = async (email: string, password: string) => {
     try {

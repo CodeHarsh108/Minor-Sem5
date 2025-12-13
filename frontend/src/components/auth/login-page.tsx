@@ -195,13 +195,13 @@ export const LoginPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between">
+                {/* <div className="flex items-center justify-between">
                   <div className="text-sm">
                     <a href="#" className="text-primary hover:underline">
                       Forgot password?
                     </a>
                   </div>
-                </div>
+                </div> */}
 
                 <Button 
                   type="submit" 

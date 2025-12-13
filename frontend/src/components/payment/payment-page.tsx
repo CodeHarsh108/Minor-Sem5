@@ -49,11 +49,32 @@ export const PaymentPage: React.FC = () => {
 
   useEffect(() => {
     if (!appointmentData || !doctor) {
+      toast.error('Invalid appointment data');
       navigate('/doctors');
     }
   }, [appointmentData, doctor, navigate]);
 
-  if (!appointmentData || !doctor) return null;
+  // Safe amount calculation with defaults
+  const getAmountValues = () => {
+    // Use provided amount or calculate from doctor data
+    const baseAmount = amount || 
+                     (doctor?.consultantFee && typeof doctor.consultantFee === 'number' ? doctor.consultantFee : 
+                     (typeof doctor?.consultationFee === 'string' ? parseInt(doctor.consultationFee.replace('₹', '')) || 500 : 500));
+    
+    const subtotal = Number(baseAmount) || 500;
+    const platformFee = subtotal * 0.05;
+    const taxes = (subtotal + platformFee) * 0.18;
+    const total = subtotal + platformFee + taxes;
+
+    return {
+      subtotal,
+      platformFee,
+      taxes,
+      total
+    };
+  };
+
+  const { subtotal, platformFee, taxes, total } = getAmountValues();
 
   const handleCardInputChange = (field: keyof typeof cardDetails, value: string) => {
     if (field === 'cardNumber') {
@@ -93,76 +114,76 @@ export const PaymentPage: React.FC = () => {
   };
 
   const handlePayment = async () => {
-  if (!validateCardDetails()) return;
-  
-  setIsProcessing(true);
-  
-  try {
-    // Prepare appointment data
-    const newAppointment = {
-      _id: `apt_${Date.now()}`,
-      patient: {
-        name: appointmentData.patientInfo.name,
-        email: appointmentData.patientInfo.email,
-        phone: appointmentData.patientInfo.phone,
-        age: appointmentData.patientInfo.age,
-        gender: appointmentData.patientInfo.gender
-      },
-      doctor: {
-        _id: doctor.id,
-        user: {
-          firstName: doctor.name.replace('Dr. ', '').split(' ')[0],
-          lastName: doctor.name.replace('Dr. ', '').split(' ')[1] || '',
-          image: doctor.image
+    if (!validateCardDetails()) return;
+    
+    setIsProcessing(true);
+    
+    try {
+      // Prepare appointment data
+      const newAppointment = {
+        _id: `apt_${Date.now()}`,
+        patient: {
+          name: appointmentData.patientInfo.name,
+          email: appointmentData.patientInfo.email,
+          phone: appointmentData.patientInfo.phone,
+          age: appointmentData.patientInfo.age,
+          gender: appointmentData.patientInfo.gender
         },
-        specialization: doctor.specializations[0],
-        experience: doctor.experience,
-        consultantFee: parseInt(doctor.consultationFee.replace('₹', '')) || doctor.consultationFee
-      },
-      date: appointmentData.selectedDate,
-      timeSlot: {
-        start: appointmentData.selectedTime,
-        end: calculateEndTime(appointmentData.selectedTime)
-      },
-      description: appointmentData.symptoms,
-      paymentStatus: true,
-      consultationType: appointmentData.consultationType,
-      amount: amount,
-      paymentMethod: 'card',
-      paymentId: `PAY_${Date.now()}`,
-      status: 'upcoming',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+        doctor: {
+          _id: doctor.id,
+          user: {
+            firstName: doctor.name.replace('Dr. ', '').split(' ')[0],
+            lastName: doctor.name.replace('Dr. ', '').split(' ')[1] || '',
+            image: doctor.image
+          },
+          specialization: doctor.specializations?.[0] || 'General Medicine',
+          experience: doctor.experience || 5,
+          consultantFee: subtotal
+        },
+        date: appointmentData.selectedDate,
+        timeSlot: {
+          start: appointmentData.selectedTime,
+          end: calculateEndTime(appointmentData.selectedTime)
+        },
+        description: appointmentData.symptoms,
+        paymentStatus: true,
+        consultationType: appointmentData.consultationType,
+        amount: total,
+        paymentMethod: 'card',
+        paymentId: `PAY_${Date.now()}`,
+        status: 'upcoming',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
 
-    // Store appointment in localStorage
-    const storageKey = getUserStorageKey('userAppointments');
-    const existingAppointments = JSON.parse(localStorage.getItem(storageKey) || '[]');
-    const updatedAppointments = [newAppointment, ...existingAppointments];
-    localStorage.setItem(storageKey, JSON.stringify(updatedAppointments));
+      // Store appointment in localStorage
+      const storageKey = getUserStorageKey('userAppointments');
+      const existingAppointments = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      const updatedAppointments = [newAppointment, ...existingAppointments];
+      localStorage.setItem(storageKey, JSON.stringify(updatedAppointments));
 
-    toast.success('Payment successful! Your appointment has been confirmed.');
-    
-    // Navigate to dashboard with the new appointment data
-    navigate('/dashboard', { 
-      state: { 
-        newAppointment: newAppointment
-      }
-    });
-    
-  } catch (error: any) {
-    console.error('Payment error:', error);
-    toast.error('Payment processing failed. Please try again.');
-  } finally {
-    setIsProcessing(false);
-  }
-};
+      toast.success('Payment successful! Your appointment has been confirmed.');
+      
+      // Navigate to dashboard with the new appointment data
+      navigate('/dashboard', { 
+        state: { 
+          newAppointment: newAppointment
+        }
+      });
+      
+    } catch (error: any) {
+      console.error('Payment error:', error);
+      toast.error('Payment processing failed. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
-// Add this helper function to PaymentPage
-const getUserStorageKey = (baseKey: string) => {
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  return user?.id || user?._id ? `${baseKey}_${user.id || user._id}` : baseKey;
-};
+  // Add this helper function to PaymentPage
+  const getUserStorageKey = (baseKey: string) => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    return user?.id || user?._id ? `${baseKey}_${user.id || user._id}` : baseKey;
+  };
 
   const calculateEndTime = (startTime: string): string => {
     const [time, period] = startTime.split(' ');
@@ -183,10 +204,25 @@ const getUserStorageKey = (baseKey: string) => {
     return `${formattedHours}:${endMinutes.toString().padStart(2, '0')} ${endPeriod}`;
   };
 
-  const subtotal = amount;
-  const platformFee = amount * 0.05;
-  const taxes = (subtotal + platformFee) * 0.18;
-  const total = subtotal + platformFee + taxes;
+  // Safe number formatting function
+  const formatCurrency = (value: number): string => {
+    return value.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+  };
+
+  if (!appointmentData || !doctor) {
+    return (
+      <div className="min-h-screen bg-background py-8 px-4 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h3 className="text-xl font-semibold mb-2">Invalid Appointment Data</h3>
+          <p className="text-muted-foreground mb-4">Please book an appointment first.</p>
+          <Button onClick={() => navigate('/doctors')}>
+            Find a Doctor
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background py-8 px-4">
@@ -303,7 +339,7 @@ const getUserStorageKey = (baseKey: string) => {
               ) : (
                 <>
                   <CreditCard className="mr-2 h-4 w-4" />
-                  Pay ₹{total.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                  Pay ₹{formatCurrency(total)}
                 </>
               )}
             </Button>
@@ -321,11 +357,15 @@ const getUserStorageKey = (baseKey: string) => {
                 <div className="flex items-center space-x-3">
                   <Avatar className="w-12 h-12">
                     <AvatarImage src={doctor.image} alt={doctor.name} />
-                    <AvatarFallback>{doctor.name.split(' ').map((n: string) => n[0]).join('')}</AvatarFallback>
+                    <AvatarFallback>
+                      {doctor.name ? doctor.name.split(' ').map((n: string) => n[0]).join('') : 'DR'}
+                    </AvatarFallback>
                   </Avatar>
                   <div>
-                    <div className="font-medium">{doctor.name}</div>
-                    <div className="text-sm text-muted-foreground">{doctor.specializations[0]}</div>
+                    <div className="font-medium">{doctor.name || 'Doctor'}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {doctor.specializations?.[0] || 'General Medicine'}
+                    </div>
                   </div>
                 </div>
 
@@ -335,12 +375,12 @@ const getUserStorageKey = (baseKey: string) => {
                 <div className="space-y-3">
                   <div className="flex items-center space-x-2 text-sm">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span>{appointmentData.selectedDate}</span>
+                    <span>{appointmentData.selectedDate || 'Not specified'}</span>
                   </div>
                   
                   <div className="flex items-center space-x-2 text-sm">
                     <Clock className="h-4 w-4 text-muted-foreground" />
-                    <span>{appointmentData.selectedTime}</span>
+                    <span>{appointmentData.selectedTime || 'Not specified'}</span>
                   </div>
                   
                   <div className="flex items-center space-x-2 text-sm">
@@ -349,12 +389,14 @@ const getUserStorageKey = (baseKey: string) => {
                     ) : (
                       <MessageSquare className="h-4 w-4 text-muted-foreground" />
                     )}
-                    <span className="capitalize">{appointmentData.consultationType.replace('-', ' ')} Consultation</span>
+                    <span className="capitalize">
+                      {appointmentData.consultationType ? appointmentData.consultationType.replace('-', ' ') : 'video'} Consultation
+                    </span>
                   </div>
                   
                   <div className="flex items-center space-x-2 text-sm">
                     <User className="h-4 w-4 text-muted-foreground" />
-                    <span>{appointmentData.patientInfo.name}</span>
+                    <span>{appointmentData.patientInfo?.name || 'Patient'}</span>
                   </div>
                 </div>
 
@@ -364,24 +406,24 @@ const getUserStorageKey = (baseKey: string) => {
                 <div className="space-y-3">
                   <div className="flex justify-between text-sm">
                     <span>Consultation Fee</span>
-                    <span>₹{subtotal.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+                    <span>₹{formatCurrency(subtotal)}</span>
                   </div>
                   
                   <div className="flex justify-between text-sm">
                     <span>Platform Fee</span>
-                    <span>₹{platformFee.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+                    <span>₹{formatCurrency(platformFee)}</span>
                   </div>
                   
                   <div className="flex justify-between text-sm">
                     <span>Taxes (18% GST)</span>
-                    <span>₹{taxes.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+                    <span>₹{formatCurrency(taxes)}</span>
                   </div>
                   
                   <Separator />
                   
                   <div className="flex justify-between font-medium">
                     <span>Total Amount</span>
-                    <span className="text-primary">₹{total.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+                    <span className="text-primary">₹{formatCurrency(total)}</span>
                   </div>
                 </div>
 
@@ -407,4 +449,3 @@ const getUserStorageKey = (baseKey: string) => {
     </div>
   );
 };
-

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, MapPin, Star, Calendar, Filter, Heart, Award, Clock, Video, MessageSquare } from 'lucide-react';
+import { Search, MapPin, Star, Calendar, Filter, Heart, Award, Clock, Video, MessageSquare, Users } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { useAuth } from '../../App';
 import axios from 'axios';
+import { toast } from 'sonner';
 
 const API_BASE_URL = 'http://localhost:8002/api/v1';
 
@@ -50,6 +51,47 @@ interface ApiResponse {
   message: string;
   doctors: Doctor[];
 }
+
+// Collaboration Dialog Component
+const CollaborationDialog: React.FC<{ doctor: Doctor; children: React.ReactNode }> = ({ doctor, children }) => {
+  const [open, setOpen] = useState(false);
+
+  const handleCollaborationRequest = () => {
+    // In a real app, this would make an API call to send collaboration request
+    toast.success('Collaboration request sent to the doctor!');
+    setOpen(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        {children}
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Request Collaboration</DialogTitle>
+          <DialogDescription>
+            Send a collaboration request to Dr. {doctor.user ? `${doctor.user.firstName} ${doctor.user.lastName}` : 'Unknown'}?
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            This will notify the doctor that you're interested in collaborating on patient cases.
+          </p>
+          <div className="flex space-x-2 justify-end">
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCollaborationRequest}>
+              <Users className="h-4 w-4 mr-2" />
+              Send Request
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 // Doctor Detail Modal Component
 const DoctorDetailModal: React.FC<{ doctor: Doctor; children: React.ReactNode }> = ({ doctor, children }) => {
@@ -281,24 +323,38 @@ export const DoctorSearch: React.FC = () => {
 
   // Fetch doctors from API
   useEffect(() => {
-    const fetchDoctors = async () => {
-      try {
-        setLoading(true);
-        const response = await axios.get<ApiResponse>(`${API_BASE_URL}/user/doctors`, {
-          withCredentials: true
-        });
-        
-        if (response.data.success) {
-          setDoctors(response.data.doctors);
-        } else {
-          throw new Error(response.data.message || 'Failed to fetch doctors');
-        }
-      } catch (err: any) {
-        setError(err.response?.data?.message || err.message || 'An error occurred');
-      } finally {
-        setLoading(false);
-      }
-    };
+   const fetchDoctors = async () => {
+  try {
+    setLoading(true);
+    const response = await axios.get<ApiResponse>(`${API_BASE_URL}/user/doctors`, {
+      withCredentials: true
+    });
+    
+    if (response.data.success) {
+      // Filter out doctors with null user data and ensure all fields are present
+      const validDoctors = response.data.doctors
+        .filter(doctor => doctor.user) // Remove doctors without user
+        .map(doctor => ({ // Add default values
+          ...doctor,
+          specialization: doctor.specialization || 'General Medicine',
+          experience: doctor.experience || 0,
+          consultantFee: doctor.consultantFee || 500,
+          degrees: doctor.degrees || 'Medical Degree',
+          certification: doctor.certification || '',
+          availableDays: doctor.availableDays || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+          availableTimeSlot: doctor.availableTimeSlot || { start: '09:00', end: '17:00' }
+        }));
+      
+      setDoctors(validDoctors);
+    } else {
+      throw new Error(response.data.message || 'Failed to fetch doctors');
+    }
+  } catch (err: any) {
+    setError(err.response?.data?.message || err.message || 'An error occurred');
+  } finally {
+    setLoading(false);
+  }
+};
 
     fetchDoctors();
   }, []);
@@ -412,7 +468,7 @@ export const DoctorSearch: React.FC = () => {
 
         {/* Search and Filter Section */}
         <div className="bg-card p-6 rounded-lg shadow-lg mb-8">
-          <div className="grid md:grid-cols-4 gap-4 mb-4 items-center ">
+          <div className="grid md:grid-cols-4 gap-4 mb-4 items-center">
             <div className="md:col-span-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -573,6 +629,16 @@ export const DoctorSearch: React.FC = () => {
                       Book Now
                     </Button>
                   </div>
+
+                  {/* Collaboration Button - Only show if user is a doctor */}
+                  {user?.accountType === 'Doctor' && user.id !== doctor.user._id && (
+                    <CollaborationDialog doctor={doctor}>
+                      <Button variant="outline" size="sm" className="w-full">
+                        <Users className="h-4 w-4 mr-2" />
+                        Collaboration
+                      </Button>
+                    </CollaborationDialog>
+                  )}
                 </CardContent>
               </Card>
             );
