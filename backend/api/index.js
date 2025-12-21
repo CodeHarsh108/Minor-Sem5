@@ -1,25 +1,26 @@
-// Importing necessary modules and packages
-const express = require("express");
-const app = express();
+
 const authRoutes = require("../routes/auth.route.js");
 const userRoutes = require("../routes/users.route.js");
 const database = require("../config/database.js");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
 const dotenv = require("dotenv");
+dotenv.config();
+const express = require("express");
+const app = express();
+
 
 app.use(
 	cors({
-		origin: process.env.FRONTEND_URL || "http://localhost:3000",
+		// origin: process.env.FRONTEND_URL || "http://localhost:3000",
+		origin: true,
 		credentials: true,
 	})
 );
 
 // Setting up port number
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT;
 
-// Loading environment variables from .env file
-dotenv.config();
 
 // Connecting to database
 database.connect();
