@@ -4,7 +4,6 @@ import { Search, Users, Calendar, Shield, Star, ArrowRight, Heart, ScrollText, B
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
-// Note: place poster.jpg in the public folder (public/poster.jpg) and use <img src="/poster.jpg" /> in the component instead of importing it.
 
 const HeroSection: React.FC = () => {
   return (

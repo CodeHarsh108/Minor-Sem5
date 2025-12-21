@@ -30,7 +30,7 @@ import {
   DialogTitle,
 } from '../ui/dialog';
 
-const API_BASE_URL = 'http://localhost:8002/api/v1';
+const API_BASE_URL = 'https://ayursamhita-backend.onrender.com/api/v1';
 
 // Backend response interface
 interface MedicineResponse {

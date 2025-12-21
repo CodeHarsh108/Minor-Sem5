@@ -12,7 +12,7 @@ import { Badge } from '../ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8002/api/v1';
+const API_BASE_URL = 'https://ayursamhita-backend.onrender.com/api/v1';
 
 interface PaymentMethod {
   id: string;

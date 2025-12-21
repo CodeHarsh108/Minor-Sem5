@@ -18,7 +18,7 @@ import { Button } from './components/ui/button';
 import { Avatar, AvatarFallback } from './components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './components/ui/dropdown-menu';
 
-const API_BASE_URL = 'http://localhost:8002/api/v1';
+const API_BASE_URL = 'https://ayursamhita-backend.onrender.com/api/v1';
 const GOOGLE_CLIENT_ID = '172222448657-8qanqq7lktmbl11t9431sjoujk73254k.apps.googleusercontent.com';
 
 // User interface matching your backend

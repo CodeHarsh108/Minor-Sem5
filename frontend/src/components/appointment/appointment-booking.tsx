@@ -15,7 +15,7 @@ import { Separator } from '../ui/separator';
 import { useAuth } from '../../App';
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8002/api/v1';
+const API_BASE_URL = 'https://ayursamhita-backend.onrender.com/api/v1';
 
 // Types based on your backend
 interface Doctor {
@@ -134,6 +134,8 @@ export const AppointmentBooking: React.FC = () => {
 const generateTimeSlots = (doctorData: Doctor): AvailableSlot[] => {
   const slots: AvailableSlot[] = [];
   const today = new Date();
+
+  
   
   // Safe defaults for doctor availability
   const availableDays = doctorData.availableDays && doctorData.availableDays.length > 0 
