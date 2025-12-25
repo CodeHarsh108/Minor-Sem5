@@ -7,7 +7,7 @@ import { Calendar, Clock, User, Video, MessageSquare, Phone, Mail, MapPin, Star,
 import { useAuth } from '../../App';
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8002/api/v1';
+const API_BASE_URL = 'https://ayursamhita-backend.onrender.com/api/v1';
 
 interface Patient {
   _id: string;

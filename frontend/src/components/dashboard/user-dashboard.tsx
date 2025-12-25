@@ -20,7 +20,7 @@ import {
 } from '../ui/dialog';
 import { DoctorDashboard } from './doctor-dashboard';
 
-const API_BASE_URL = 'http://localhost:8002/api/v1';
+const API_BASE_URL = 'https://ayursamhita-backend.onrender.com/api/v1';
 
 // Types based on your backend response
 interface UserInfo {
