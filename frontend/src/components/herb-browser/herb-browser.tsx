@@ -228,35 +228,35 @@ export const HerbBrowser: React.FC = () => {
         medicineType: type,
         addedAt: new Date().toISOString()
       };
-      
+
       // Get user-specific storage key
       const storageKey = getUserStorageKey('favoriteMedicines');
-      
+
       // Get existing favorites for this user
       const existingFavorites = JSON.parse(localStorage.getItem(storageKey) || '[]');
-      
+
       // Check if already exists
-      const alreadyExists = existingFavorites.some((item: any) => 
+      const alreadyExists = existingFavorites.some((item: any) =>
         item.name === medicine && item.disease === disease && item.medicineType === type
       );
-      
+
       if (alreadyExists) {
         toast.success(`${medicine} is already in your favorites!`);
         return;
       }
-      
+
       // Add new medicine
       const updatedFavorites = [...existingFavorites, medicineItem];
-      
+
       // Save to localStorage with user-specific key
       localStorage.setItem(storageKey, JSON.stringify(updatedFavorites));
-      
+
       // Show success message
       toast.success(`Added ${medicine} to your favorites!`);
-      
+
       // Trigger storage event to update dashboard
       window.dispatchEvent(new Event('storage'));
-      
+
     } catch (error) {
       console.error('Error adding medicine to favorites:', error);
       toast.error('Failed to add medicine to favorites');
@@ -280,83 +280,84 @@ export const HerbBrowser: React.FC = () => {
     'cursor-pointer px-3 py-1 rounded-full text-sm font-medium shadow-md border transition-all duration-200 transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-offset-1';
 
   return (
-    <div className="min-h-screen bg-background py-8 px-4">
-      <div className="max-w-4xl mx-auto">
+    <div className="ayur-page-dark" style={{ paddingTop:8, paddingBottom:40 }}>
+      <div className="max-w-4xl mx-auto" style={{ padding:'0 24px', position:'relative', zIndex:1 }}>
         {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-foreground mb-4">
-            Find Medicines for Your Condition
-          </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+        <div className="ayur-section-header">
+          <span className="ayur-pill">🌿 Dual Medicine Search</span>
+          <h1>Find <em>Medicines</em> for Your Condition</h1>
+          <p>
             Search for any health condition to discover both Allopathic and
             Ayurvedic treatment options.
           </p>
         </div>
 
         {/* Search Section */}
-        <div className="bg-card p-10 rounded-lg mb-12">
-          <form onSubmit={handleSearch} className="space-y-6">
-            <div className="relative flex items-center">
-              <Input
+        <div className="ayur-glass-card" style={{ padding:'36px', marginBottom:48 }}>
+          <form onSubmit={handleSearch}>
+            <div style={{ position:'relative', display:'flex', alignItems:'center' }}>
+              <Search size={20} color="#60a5fa" style={{ position:'absolute', left:18, pointerEvents:'none' }} />
+              <input
                 placeholder="Search for a health condition (e.g., cold, fever, headache)..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-14 pr-32 h-16 text-lg border-2 border-muted-foreground/30 rounded-xl shadow-md focus:border-primary focus:ring-2 focus:ring-primary/30 transition-all duration-200 bg-gradient-to-r from-background via-card to-background"
+                style={{ width:'100%', padding:'18px 160px 18px 52px',
+                  background:'rgba(255,255,255,0.06)', border:'1px solid rgba(96,165,250,0.2)',
+                  borderRadius:16, color:'#eff6ff', fontFamily:"'DM Sans',sans-serif",
+                  fontSize:16, outline:'none', boxSizing:'border-box' }}
+                onFocus={e => e.target.style.borderColor='rgba(96,165,250,0.5)'}
+                onBlur={e => e.target.style.borderColor='rgba(96,165,250,0.2)'}
               />
-
-              <Button
+              <button
                 type="submit"
-                className="absolute right-4 top-1/2 -translate-y-1/2 h-12 px-6 rounded-xl bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all duration-200 flex items-center gap-2"
                 disabled={loading || !searchTerm.trim()}
+                style={{ position:'absolute', right:8, padding:'11px 24px',
+                  background: (loading || !searchTerm.trim()) ? 'rgba(37,99,235,0.4)' : 'linear-gradient(135deg,#2563eb,#3b82f6)',
+                  color:'#fff', border:'none', borderRadius:12, cursor: (loading || !searchTerm.trim()) ? 'not-allowed' : 'pointer',
+                  fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:14,
+                  display:'flex', alignItems:'center', gap:8, transition:'all 0.2s' }}
               >
-                {loading ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <>
-                    <Search className="h-5 w-5 mr-2" />
-                    <span className="font-semibold">Search</span>
-                  </>
-                )}
-              </Button>
+                {loading ? <Loader2 size={18} className="animate-spin" /> : <><Search size={18} /><span>Search</span></>}
+              </button>
             </div>
           </form>
 
           {/* Search History */}
           {searchHistory.length > 0 && (
-            <div className="mt-6">
-              <h3 className="text-sm font-medium text-muted-foreground mb-3">
+            <div style={{ marginTop:24 }}>
+              <h3 style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:600,
+                color:'rgba(191,219,254,0.5)', marginBottom:12, textTransform:'uppercase', letterSpacing:'0.05em' }}>
                 Recent Searches
               </h3>
-              <div className="flex flex-wrap gap-3">
+              <div style={{ display:'flex', flexWrap:'wrap', gap:10 }}>
                 {searchHistory.map((disease, index) => (
-                  <Badge
-                    key={index}
-                    variant="secondary"
-                    className={`${tagBaseClasses} bg-gradient-to-r from-white/60 to-slate-50 dark:from-slate-800 dark:to-slate-900 border-muted-foreground/10 hover:from-primary/80 hover:to-primary/40 hover:text-primary-foreground focus:ring-primary/30`}
-                    onClick={() => handleQuickSearch(disease)}
-                  >
-                    {disease}
-                  </Badge>
+                  <button key={index} onClick={() => handleQuickSearch(disease)}
+                    style={{ padding:'6px 16px', borderRadius:20, border:'1px solid rgba(96,165,250,0.25)',
+                      background:'rgba(96,165,250,0.08)', color:'#93c5fd', cursor:'pointer',
+                      fontFamily:"'DM Sans',sans-serif", fontSize:13, transition:'all 0.2s' }}
+                    onMouseOver={e => e.currentTarget.style.background='rgba(96,165,250,0.18)'}
+                    onMouseOut={e => e.currentTarget.style.background='rgba(96,165,250,0.08)'}
+                  >{disease}</button>
                 ))}
               </div>
             </div>
           )}
 
           {/* Common Conditions */}
-          <div className="mt-6">
-            <h3 className="text-sm font-medium text-muted-foreground mb-3">
+          <div style={{ marginTop:24 }}>
+            <h3 style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:600,
+              color:'rgba(191,219,254,0.5)', marginBottom:12, textTransform:'uppercase', letterSpacing:'0.05em' }}>
               Common Conditions
             </h3>
-            <div className="flex flex-wrap gap-3">
+            <div style={{ display:'flex', flexWrap:'wrap', gap:10 }}>
               {commonDiseases.map((disease, index) => (
-                <Badge
-                  key={index}
-                  variant="outline"
-                  className={`${tagBaseClasses} bg-gradient-to-r from-green-50 to-white dark:from-green-900/10 border-green-200 text-green-700 hover:from-green-400/80 hover:to-green-300/60 hover:text-white focus:ring-green-300`}
-                  onClick={() => handleQuickSearch(disease)}
-                >
-                  {disease}
-                </Badge>
+                <button key={index} onClick={() => handleQuickSearch(disease)}
+                  style={{ padding:'6px 16px', borderRadius:20, border:'1px solid rgba(52,211,153,0.3)',
+                    background:'rgba(52,211,153,0.08)', color:'#34d399', cursor:'pointer',
+                    fontFamily:"'DM Sans',sans-serif", fontSize:13, transition:'all 0.2s' }}
+                  onMouseOver={e => { e.currentTarget.style.background='rgba(52,211,153,0.18)'; e.currentTarget.style.color='#fff'; }}
+                  onMouseOut={e => { e.currentTarget.style.background='rgba(52,211,153,0.08)'; e.currentTarget.style.color='#34d399'; }}
+                >{disease}</button>
               ))}
             </div>
           </div>
@@ -401,8 +402,8 @@ export const HerbBrowser: React.FC = () => {
 
             <div className="grid md:grid-cols-2 gap-6">
               {/* Allopathic */}
-              <Card className="hover:shadow-lg transition-shadow duration-300">
-                <CardHeader className="bg-green-50 dark:bg-blue-900/20 pb-4">
+               <Card className="hover:shadow-lg transition-shadow duration-300">
+                <CardHeader className="bg-green-50 dark:bg-green-900/20 pb-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <Pill className="h-6 w-6 text-green-600" />

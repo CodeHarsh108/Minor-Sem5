@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Toaster, toast } from 'sonner';
-import { Calendar, Clock, Video, MessageSquare, User, Phone, Mail, FileText, ArrowLeft, ArrowRight, CheckCircle } from 'lucide-react';
+import { Calendar, Clock, Video, MessageSquare, User, Phone, Mail, FileText, ArrowLeft, ArrowRight, CheckCircle, Pill, AlertTriangle } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -64,6 +64,15 @@ interface AvailableSlot {
   slots: string[];
 }
 
+interface FavoriteMedicine {
+  _id: string;
+  name: string;
+  type: 'medicine';
+  disease: string;
+  medicineType: 'allopathic' | 'ayurvedic';
+  addedAt: string;
+}
+
 export const AppointmentBooking: React.FC = () => {
   const { doctorId } = useParams<{ doctorId: string }>();
   const navigate = useNavigate();
@@ -73,6 +82,7 @@ export const AppointmentBooking: React.FC = () => {
   const [doctor, setDoctor] = useState<Doctor | null>(null);
   const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([]);
   const [loading, setLoading] = useState(true);
+  const [savedMedicines, setSavedMedicines] = useState<FavoriteMedicine[]>([]);
   const [bookingData, setBookingData] = useState<BookingData>({
     doctorId: doctorId || '',
     consultationType: 'video',
@@ -248,12 +258,38 @@ useEffect(() => {
     }
   };
 
+  // Load saved medicines from localStorage
+  useEffect(() => {
+    if (user) {
+      try {
+        const storageKey = `favoriteMedicines_${user.id || user._id}`;
+        const savedMeds = localStorage.getItem(storageKey);
+        if (savedMeds) {
+          setSavedMedicines(JSON.parse(savedMeds));
+        }
+      } catch (error) {
+        console.error('Error loading saved medicines:', error);
+      }
+    }
+  }, [user]);
+
+  // Group medicines by disease
+  const medicinesByDisease = useMemo(() => {
+    const grouped: Record<string, FavoriteMedicine[]> = {};
+    savedMedicines.forEach(med => {
+      const disease = med.disease || 'Uncategorized';
+      if (!grouped[disease]) grouped[disease] = [];
+      grouped[disease].push(med);
+    });
+    return grouped;
+  }, [savedMedicines]);
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-background py-8 px-4 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading doctor details...</p>
+      <div className="ayur-page-dark" style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
+        <div style={{ textAlign:'center' }}>
+          <div className="ayur-spinner"></div>
+          <p style={{ color:'rgba(191,219,254,0.55)' }}>Loading doctor details...</p>
         </div>
       </div>
     );
@@ -271,6 +307,8 @@ useEffect(() => {
     }));
   };
 
+
+
   const handleNext = () => {
     if (currentStep === 1) {
       if (!bookingData.selectedDate || !bookingData.selectedTime) {
@@ -282,7 +320,7 @@ useEffect(() => {
         toast.error('Please fill in all required patient information');
         return;
       }
-    } else if (currentStep === 3) {
+    } else if (currentStep === 4) {
       if (!bookingData.symptoms) {
         toast.error('Please describe your symptoms or reason for consultation');
         return;
@@ -505,6 +543,71 @@ useEffect(() => {
       case 3:
         return (
           <div className="space-y-6">
+            <h3 className="text-lg font-semibold mb-2">Your Saved Medicines</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              These are medicines you have added from the Herb Browser. Your doctor will see this information during your consultation.
+            </p>
+            
+            {savedMedicines.length > 0 ? (
+              <div className="space-y-4">
+                {Object.entries(medicinesByDisease).map(([disease, meds]) => (
+                  <div key={disease} className="border rounded-lg p-4">
+                    <div className="flex items-center space-x-2 mb-3">
+                      <AlertTriangle className="h-4 w-4 text-amber-500" />
+                      <h4 className="font-semibold text-base">{disease}</h4>
+                      <Badge variant="outline" className="text-xs">
+                        {meds.length} medicine{meds.length > 1 ? 's' : ''}
+                      </Badge>
+                    </div>
+                    <div className="space-y-2">
+                      {meds.map(med => (
+                        <div key={med._id} className="flex items-center space-x-3 p-3 rounded-lg bg-muted/50">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                            med.medicineType === 'allopathic' 
+                              ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' 
+                              : 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                          }`}>
+                            <Pill className="h-4 w-4" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">{med.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {med.medicineType === 'allopathic' ? '💊 Allopathic' : '🌿 Ayurvedic'} • Added {new Date(med.addedAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <Badge variant={med.medicineType === 'allopathic' ? 'default' : 'secondary'}
+                            className="text-xs">
+                            {med.medicineType === 'allopathic' ? 'Allopathic' : 'Ayurvedic'}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                  <p className="text-sm text-muted-foreground">
+                    <strong className="text-foreground">ℹ️ Note:</strong> This medicine information will be shared with the doctor for better consultation. 
+                    You can add more medicines by visiting the <a href="/herbs" className="text-primary underline">Herb Browser</a>.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8 border rounded-lg">
+                <Pill className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h4 className="font-semibold mb-2">No medicines saved yet</h4>
+                <p className="text-sm text-muted-foreground mb-4">
+                  You haven't saved any medicines from the Herb Browser. You can continue without this, 
+                  or visit the <a href="/herbs" className="text-primary underline">Herb Browser</a> to explore and save medicines.
+                </p>
+                <Badge variant="outline">Optional Step</Badge>
+              </div>
+            )}
+          </div>
+        );
+
+      case 4:
+        return (
+          <div className="space-y-6">
             <h3 className="text-lg font-semibold mb-4">Medical Information</h3>
             
             <div className="space-y-4">
@@ -544,7 +647,7 @@ useEffect(() => {
           </div>
         );
 
-      case 4:
+      case 5:
         return (
           <div className="space-y-6">
             <div className="text-center">
@@ -594,6 +697,26 @@ useEffect(() => {
                 </div>
               </div>
 
+              {/* Saved Medicines Summary */}
+              {savedMedicines.length > 0 && (
+                <div className="bg-muted p-4 rounded-lg">
+                  <h4 className="font-medium mb-3 flex items-center gap-2">
+                    <Pill className="h-4 w-4" />
+                    Saved Medicines ({savedMedicines.length})
+                  </h4>
+                  <div className="space-y-1 text-sm">
+                    {savedMedicines.map(med => (
+                      <div key={med._id} className="flex justify-between">
+                        <span>{med.name}</span>
+                        <span className="font-medium text-muted-foreground">
+                          {med.medicineType === 'allopathic' ? '💊' : '🌿'} For {med.disease}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="bg-primary/10 p-4 rounded-lg">
                 <div className="flex justify-between items-center">
                   <span className="font-medium">Consultation Fee:</span>
@@ -614,9 +737,9 @@ useEffect(() => {
   const specializations = getSpecializations(doctor.specialization);
 
   return (
-    <div className="min-h-screen bg-background py-8 px-4">
+    <div className="ayur-page-dark" style={{ paddingTop:8, paddingBottom:40 }}>
       <Toaster position="top-right" />
-      <div className="max-w-4xl mx-auto">
+      <div style={{ maxWidth:960, margin:'0 auto', padding:'0 24px', position:'relative', zIndex:1 }}>
         <div className="mb-8">
           <Button variant="ghost" onClick={() => navigate('/doctors')} className="mb-4">
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -677,12 +800,12 @@ useEffect(() => {
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle>Book Appointment</CardTitle>
-                    <CardDescription>Step {currentStep} of 4</CardDescription>
+                    <CardDescription>Step {currentStep} of 5</CardDescription>
                   </div>
                   
                   {/* Progress indicators */}
                   <div className="flex space-x-2">
-                    {[1, 2, 3, 4].map((step) => (
+                    {[1, 2, 3, 4, 5].map((step) => (
                       <div
                         key={step}
                         className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
@@ -711,7 +834,7 @@ useEffect(() => {
                     Back
                   </Button>
                   
-                  {currentStep < 4 ? (
+                  {currentStep < 5 ? (
                     <Button onClick={handleNext}>
                       Next
                       <ArrowRight className="ml-2 h-4 w-4" />

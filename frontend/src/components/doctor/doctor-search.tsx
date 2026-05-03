@@ -44,6 +44,7 @@ interface Doctor {
   };
   approvalStatus: boolean;
   images: string[];
+  doctorType?: 'homeopathic' | 'allopathic'; // Classified on frontend
 }
 
 interface ApiResponse {
@@ -155,23 +156,23 @@ const DoctorDetailModal: React.FC<{ doctor: Doctor; children: React.ReactNode }>
             </div>
           </div>
         </DialogHeader>
-        
+
         <Tabs defaultValue="about" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="about">About</TabsTrigger>
             <TabsTrigger value="education">Education</TabsTrigger>
             <TabsTrigger value="availability">Availability</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="about" className="space-y-6">
             <div>
               <h4 className="font-semibold mb-2">About Dr. {doctor.user?.lastName || 'Unknown'}</h4>
               <p className="text-muted-foreground">
-                Dr. {doctorName} is a specialized medical professional with {calculateYearsOfExperience(doctor.experience)} years of experience in {doctor.specialization?.split(' - ')[0] || 'medicine'}. 
+                Dr. {doctorName} is a specialized medical professional with {calculateYearsOfExperience(doctor.experience)} years of experience in {doctor.specialization?.split(' - ')[0] || 'medicine'}.
                 {userGender === 'Female' ? ' She' : ' He'} provides comprehensive healthcare services with a patient-centered approach.
               </p>
             </div>
-            
+
             <div className="grid md:grid-cols-2 gap-6">
               <div>
                 <h4 className="font-semibold mb-2">Specializations</h4>
@@ -181,7 +182,7 @@ const DoctorDetailModal: React.FC<{ doctor: Doctor; children: React.ReactNode }>
                   )) || <Badge variant="secondary">General Medicine</Badge>}
                 </div>
               </div>
-              
+
               <div>
                 <h4 className="font-semibold mb-2">Personal Details</h4>
                 <div className="space-y-2 text-sm">
@@ -191,7 +192,7 @@ const DoctorDetailModal: React.FC<{ doctor: Doctor; children: React.ReactNode }>
                 </div>
               </div>
             </div>
-            
+
             <div>
               <h4 className="font-semibold mb-2">Certifications</h4>
               <div className="space-y-2">
@@ -210,7 +211,7 @@ const DoctorDetailModal: React.FC<{ doctor: Doctor; children: React.ReactNode }>
               </div>
             </div>
           </TabsContent>
-          
+
           <TabsContent value="education" className="space-y-4">
             <div>
               <h4 className="font-semibold mb-3">Educational Background</h4>
@@ -226,7 +227,7 @@ const DoctorDetailModal: React.FC<{ doctor: Doctor; children: React.ReactNode }>
                 )}
               </div>
             </div>
-            
+
             <div className="bg-muted p-4 rounded-lg">
               <div className="flex items-center space-x-2 mb-2">
                 <Award className="h-5 w-5 text-primary" />
@@ -235,7 +236,7 @@ const DoctorDetailModal: React.FC<{ doctor: Doctor; children: React.ReactNode }>
               <p>{calculateYearsOfExperience(doctor.experience)}+ years of practice in {doctor.specialization?.split(' - ')[0] || 'medicine'}</p>
             </div>
           </TabsContent>
-          
+
           <TabsContent value="availability" className="space-y-4">
             <div className="grid md:grid-cols-2 gap-6">
               <div>
@@ -253,14 +254,14 @@ const DoctorDetailModal: React.FC<{ doctor: Doctor; children: React.ReactNode }>
                       )}
                     </div>
                   </div>
-                  
+
                   <div>
                     <h5 className="font-medium mb-2">Available Time:</h5>
                     <div className="flex items-center space-x-2">
                       <Clock className="h-4 w-4 text-green-500" />
                       <span>
-                        {doctor.availableTimeSlot ? 
-                          `${formatTime(doctor.availableTimeSlot.start)} - ${formatTime(doctor.availableTimeSlot.end)}` : 
+                        {doctor.availableTimeSlot ?
+                          `${formatTime(doctor.availableTimeSlot.start)} - ${formatTime(doctor.availableTimeSlot.end)}` :
                           'Not specified'
                         }
                       </span>
@@ -268,7 +269,7 @@ const DoctorDetailModal: React.FC<{ doctor: Doctor; children: React.ReactNode }>
                   </div>
                 </div>
               </div>
-              
+
               <div className="space-y-4">
                 <div>
                   <h4 className="font-semibold mb-2">Consultation Options</h4>
@@ -283,16 +284,16 @@ const DoctorDetailModal: React.FC<{ doctor: Doctor; children: React.ReactNode }>
                     </div>
                   </div>
                 </div>
-                
+
                 <div>
                   <h4 className="font-semibold mb-2">Consultation Fee</h4>
                   <span className="text-2xl font-bold text-primary">₹{doctor.consultantFee}</span>
                 </div>
               </div>
             </div>
-            
+
             <div className="pt-4 border-t">
-              <Button 
+              <Button
                 onClick={() => navigate(`/appointment/${doctor._id}`)}
                 className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
                 size="lg"
@@ -318,43 +319,45 @@ export const DoctorSearch: React.FC = () => {
   const [sortBy, setSortBy] = useState('experience');
   const [showVideoOnly, setShowVideoOnly] = useState(false);
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [selectedDoctorType, setSelectedDoctorType] = useState<'all' | 'homeopathic' | 'allopathic'>('all');
   const navigate = useNavigate();
   const { user } = useAuth();
 
   // Fetch doctors from API
   useEffect(() => {
-   const fetchDoctors = async () => {
-  try {
-    setLoading(true);
-    const response = await axios.get<ApiResponse>(`${API_BASE_URL}/user/doctors`, {
-      withCredentials: true
-    });
-    
-    if (response.data.success) {
-      // Filter out doctors with null user data and ensure all fields are present
-      const validDoctors = response.data.doctors
-        .filter(doctor => doctor.user) // Remove doctors without user
-        .map(doctor => ({ // Add default values
-          ...doctor,
-          specialization: doctor.specialization || 'General Medicine',
-          experience: doctor.experience || 0,
-          consultantFee: doctor.consultantFee || 500,
-          degrees: doctor.degrees || 'Medical Degree',
-          certification: doctor.certification || '',
-          availableDays: doctor.availableDays || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
-          availableTimeSlot: doctor.availableTimeSlot || { start: '09:00', end: '17:00' }
-        }));
-      
-      setDoctors(validDoctors);
-    } else {
-      throw new Error(response.data.message || 'Failed to fetch doctors');
-    }
-  } catch (err: any) {
-    setError(err.response?.data?.message || err.message || 'An error occurred');
-  } finally {
-    setLoading(false);
-  }
-};
+    const fetchDoctors = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get<ApiResponse>(`${API_BASE_URL}/user/doctors`, {
+          withCredentials: true
+        });
+
+        if (response.data.success) {
+          // Filter out doctors with null user data and ensure all fields are present
+          const validDoctors = response.data.doctors
+            .filter(doctor => doctor.user) // Remove doctors without user
+            .map((doctor, index) => ({ // Add default values
+              ...doctor,
+              specialization: doctor.specialization || 'General Medicine',
+              experience: doctor.experience || 0,
+              consultantFee: doctor.consultantFee || 500,
+              degrees: doctor.degrees || 'Medical Degree',
+              certification: doctor.certification || '',
+              availableDays: doctor.availableDays || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+              availableTimeSlot: doctor.availableTimeSlot || { start: '09:00', end: '17:00' },
+              doctorType: (index < 7 ? 'homeopathic' : 'allopathic') as 'homeopathic' | 'allopathic'
+            }));
+
+          setDoctors(validDoctors);
+        } else {
+          throw new Error(response.data.message || 'Failed to fetch doctors');
+        }
+      } catch (err: any) {
+        setError(err.response?.data?.message || err.message || 'An error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
 
     fetchDoctors();
   }, []);
@@ -375,16 +378,19 @@ export const DoctorSearch: React.FC = () => {
     let filtered = doctors.filter(doctor => {
       // Skip doctors with null user
       if (!doctor.user) return false;
-      
+
       const doctorName = `${doctor.user.firstName || ''} ${doctor.user.lastName || ''}`.toLowerCase();
       const matchesSearch = doctorName.includes(searchTerm.toLowerCase()) ||
-                           (doctor.specialization?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-                           (doctor.degrees?.toLowerCase() || '').includes(searchTerm.toLowerCase());
-      
-      const matchesSpecialization = selectedSpecialization === 'All Specializations' || 
-                                   (doctor.specialization?.includes(selectedSpecialization) || false);
+        (doctor.specialization?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (doctor.degrees?.toLowerCase() || '').includes(searchTerm.toLowerCase());
 
-      return matchesSearch && matchesSpecialization;
+      const matchesSpecialization = selectedSpecialization === 'All Specializations' ||
+        (doctor.specialization?.includes(selectedSpecialization) || false);
+
+      // Filter by doctor type
+      const matchesType = selectedDoctorType === 'all' || doctor.doctorType === selectedDoctorType;
+
+      return matchesSearch && matchesSpecialization && matchesType;
     });
 
     // Sort doctors with null checks
@@ -392,7 +398,7 @@ export const DoctorSearch: React.FC = () => {
       // Handle cases where user might be null
       const aName = a.user ? `${a.user.firstName} ${a.user.lastName}` : '';
       const bName = b.user ? `${b.user.firstName} ${b.user.lastName}` : '';
-      
+
       switch (sortBy) {
         case 'experience':
           return (b.experience || 0) - (a.experience || 0);
@@ -407,11 +413,11 @@ export const DoctorSearch: React.FC = () => {
     });
 
     return filtered;
-  }, [doctors, searchTerm, selectedSpecialization, sortBy, showVideoOnly]);
+  }, [doctors, searchTerm, selectedSpecialization, sortBy, showVideoOnly, selectedDoctorType]);
 
   const toggleFavorite = (doctorId: string) => {
-    setFavorites(prev => 
-      prev.includes(doctorId) 
+    setFavorites(prev =>
+      prev.includes(doctorId)
         ? prev.filter(id => id !== doctorId)
         : [...prev, doctorId]
     );
@@ -428,10 +434,10 @@ export const DoctorSearch: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background py-8 px-4 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading doctors...</p>
+      <div className="ayur-page-dark" style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
+        <div style={{ textAlign:'center' }}>
+          <div className="ayur-spinner"></div>
+          <p style={{ color:'rgba(191,219,254,0.55)', fontFamily:"'DM Sans',sans-serif" }}>Loading doctors...</p>
         </div>
       </div>
     );
@@ -439,229 +445,352 @@ export const DoctorSearch: React.FC = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-background py-8 px-4 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-6xl mb-4">⚠️</div>
-          <h3 className="text-xl font-semibold mb-2">Error loading doctors</h3>
-          <p className="text-muted-foreground mb-4">{error}</p>
-          <Button onClick={() => window.location.reload()}>
+      <div className="ayur-page-dark" style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
+        <div style={{ textAlign:'center' }}>
+          <div style={{ fontSize:56, marginBottom:16 }}>⚠️</div>
+          <h3 style={{ fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:20, color:'#eff6ff', marginBottom:8 }}>Error loading doctors</h3>
+          <p style={{ color:'rgba(191,219,254,0.55)', marginBottom:20 }}>{error}</p>
+          <button className="ayur-btn-primary" onClick={() => window.location.reload()}>
             Try Again
-          </Button>
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background py-8 px-4">
-      <div className="max-w-7xl mx-auto">
+    <div className="ayur-page-dark" style={{ paddingTop:8, paddingBottom:40 }}>
+      <div style={{ maxWidth:1200, margin:'0 auto', padding:'0 24px', position:'relative', zIndex:1 }}>
         {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-foreground mb-4">
-            Find Medical Practitioners
-          </h1>
-          <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-            Connect with certified medical practitioners for personalized consultations. 
+        <div className="ayur-section-header">
+          <span className="ayur-pill">👨‍⚕️ Expert Practitioners</span>
+          <h1>Find <em>Medical</em> Practitioners</h1>
+          <p>
+            Connect with certified medical practitioners for personalized consultations.
             Book appointments and get expert guidance for your healthcare needs.
           </p>
         </div>
 
+        {/* Doctor Type Selector */}
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:16, marginBottom:32 }}>
+          {/* All Doctors */}
+          <button
+            onClick={() => setSelectedDoctorType('all')}
+            style={{
+              padding:'20px 16px', borderRadius:20, cursor:'pointer', transition:'all 0.3s',
+              background: selectedDoctorType === 'all' ? 'rgba(96,165,250,0.15)' : 'rgba(255,255,255,0.04)',
+              border: selectedDoctorType === 'all' ? '2px solid rgba(96,165,250,0.5)' : '1px solid rgba(96,165,250,0.15)',
+              display:'flex', flexDirection:'column' as const, alignItems:'center', gap:10,
+              transform: selectedDoctorType === 'all' ? 'translateY(-2px)' : 'none',
+              boxShadow: selectedDoctorType === 'all' ? '0 8px 24px rgba(96,165,250,0.2)' : 'none'
+            }}
+          >
+            <span style={{ fontSize:32 }}>👨‍⚕️</span>
+            <span style={{ fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:15,
+              color: selectedDoctorType === 'all' ? '#93c5fd' : '#bfdbfe' }}>All Doctors</span>
+            <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12,
+              color:'rgba(191,219,254,0.5)' }}>
+              {doctors.length} doctors available
+            </span>
+          </button>
+
+          {/* Homeopathic */}
+          <button
+            onClick={() => setSelectedDoctorType('homeopathic')}
+            style={{
+              padding:'20px 16px', borderRadius:20, cursor:'pointer', transition:'all 0.3s',
+              background: selectedDoctorType === 'homeopathic'
+                ? 'linear-gradient(135deg, rgba(34,197,94,0.15), rgba(34,197,94,0.08))'
+                : 'rgba(255,255,255,0.04)',
+              border: selectedDoctorType === 'homeopathic' ? '2px solid rgba(34,197,94,0.5)' : '1px solid rgba(96,165,250,0.15)',
+              display:'flex', flexDirection:'column' as const, alignItems:'center', gap:10,
+              transform: selectedDoctorType === 'homeopathic' ? 'translateY(-2px)' : 'none',
+              boxShadow: selectedDoctorType === 'homeopathic' ? '0 8px 24px rgba(34,197,94,0.2)' : 'none'
+            }}
+          >
+            <span style={{ fontSize:32 }}>🌿</span>
+            <span style={{ fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:15,
+              color: selectedDoctorType === 'homeopathic' ? '#4ade80' : '#bfdbfe' }}>Homeopathic</span>
+            <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12,
+              color:'rgba(191,219,254,0.5)' }}>
+              {doctors.filter(d => d.doctorType === 'homeopathic').length} doctors • Natural healing
+            </span>
+          </button>
+
+          {/* Allopathic */}
+          <button
+            onClick={() => setSelectedDoctorType('allopathic')}
+            style={{
+              padding:'20px 16px', borderRadius:20, cursor:'pointer', transition:'all 0.3s',
+              background: selectedDoctorType === 'allopathic'
+                ? 'linear-gradient(135deg, rgba(59,130,246,0.15), rgba(59,130,246,0.08))'
+                : 'rgba(255,255,255,0.04)',
+              border: selectedDoctorType === 'allopathic' ? '2px solid rgba(59,130,246,0.5)' : '1px solid rgba(96,165,250,0.15)',
+              display:'flex', flexDirection:'column' as const, alignItems:'center', gap:10,
+              transform: selectedDoctorType === 'allopathic' ? 'translateY(-2px)' : 'none',
+              boxShadow: selectedDoctorType === 'allopathic' ? '0 8px 24px rgba(59,130,246,0.2)' : 'none'
+            }}
+          >
+            <span style={{ fontSize:32 }}>💊</span>
+            <span style={{ fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:15,
+              color: selectedDoctorType === 'allopathic' ? '#60a5fa' : '#bfdbfe' }}>Allopathic</span>
+            <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12,
+              color:'rgba(191,219,254,0.5)' }}>
+              {doctors.filter(d => d.doctorType === 'allopathic').length} doctors • Modern medicine
+            </span>
+          </button>
+        </div>
+
         {/* Search and Filter Section */}
-        <div className="bg-card p-6 rounded-lg shadow-lg mb-8">
-          <div className="grid md:grid-cols-4 gap-4 mb-4 items-center">
-            <div className="md:col-span-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  placeholder="Search doctors..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
+        <div className="ayur-glass-card" style={{ padding:24, marginBottom:32 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr auto', gap:12, marginBottom:16, alignItems:'center' }}>
+            {/* Search */}
+            <div style={{ position:'relative' }}>
+              <Search size={16} color="#60a5fa" style={{ position:'absolute', left:14, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }} />
+              <input
+                placeholder="Search doctors..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{ width:'100%', padding:'12px 14px 12px 40px', background:'rgba(255,255,255,0.06)',
+                  border:'1px solid rgba(96,165,250,0.2)', borderRadius:14, color:'#eff6ff',
+                  fontFamily:"'DM Sans',sans-serif", fontSize:14, outline:'none', boxSizing:'border-box' }}
+                onFocus={e => e.target.style.borderColor='rgba(96,165,250,0.5)'}
+                onBlur={e => e.target.style.borderColor='rgba(96,165,250,0.2)'}
+              />
             </div>
-            
-            <Select value={selectedSpecialization} onValueChange={setSelectedSpecialization}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select specialization" />
-              </SelectTrigger>
-              <SelectContent>
-                {specializations.map(spec => (
-                  <SelectItem key={spec} value={spec}>{spec}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
 
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger>
-                <SelectValue placeholder="Sort by" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="experience">Experience</SelectItem>
-                <SelectItem value="fee">Consultation Fee</SelectItem>
-                <SelectItem value="name">Name</SelectItem>
-                <SelectItem value="rating">Rating</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Button 
-              variant={showVideoOnly ? "default" : "outline"} 
-              onClick={() => setShowVideoOnly(!showVideoOnly)}
-              className="flex items-center space-x-2"
+            {/* Specialization */}
+            <select
+              value={selectedSpecialization}
+              onChange={e => setSelectedSpecialization(e.target.value)}
+              style={{ width:'100%', padding:'12px 14px', background:'rgba(255,255,255,0.06)',
+                border:'1px solid rgba(96,165,250,0.2)', borderRadius:14, color:'#bfdbfe',
+                fontFamily:"'DM Sans',sans-serif", fontSize:14, outline:'none', cursor:'pointer',
+                boxSizing:'border-box' }}
             >
-              <Video className="h-4 w-4" />
-              <span>{showVideoOnly ? 'Video Only' : 'All Types'}</span>
-            </Button>
+              {specializations.map(spec => (
+                <option key={spec} value={spec} style={{ background:'#0b1d3a', color:'#eff6ff' }}>{spec}</option>
+              ))}
+            </select>
+
+            {/* Sort by */}
+            <select
+              value={sortBy}
+              onChange={e => setSortBy(e.target.value)}
+              style={{ width:'100%', padding:'12px 14px', background:'rgba(255,255,255,0.06)',
+                border:'1px solid rgba(96,165,250,0.2)', borderRadius:14, color:'#bfdbfe',
+                fontFamily:"'DM Sans',sans-serif", fontSize:14, outline:'none', cursor:'pointer',
+                boxSizing:'border-box' }}
+            >
+              <option value="experience" style={{ background:'#0b1d3a' }}>Experience</option>
+              <option value="fee" style={{ background:'#0b1d3a' }}>Consultation Fee</option>
+              <option value="name" style={{ background:'#0b1d3a' }}>Name</option>
+              <option value="rating" style={{ background:'#0b1d3a' }}>Rating</option>
+            </select>
+
+            {/* Video toggle */}
+            <button
+              onClick={() => setShowVideoOnly(!showVideoOnly)}
+              style={{ padding:'12px 18px', borderRadius:14, border:'1px solid rgba(96,165,250,0.25)',
+                background: showVideoOnly ? 'rgba(37,99,235,0.3)' : 'rgba(255,255,255,0.06)',
+                color: showVideoOnly ? '#93c5fd' : '#bfdbfe',
+                fontFamily:"'DM Sans',sans-serif", fontSize:14, cursor:'pointer',
+                display:'flex', alignItems:'center', gap:8, whiteSpace:'nowrap',
+                transition:'all 0.2s' }}
+            >
+              <Video size={16} />
+              {showVideoOnly ? 'Video Only' : 'All Types'}
+            </button>
           </div>
 
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>Showing {filteredDoctors.length} doctors</span>
-            <div className="flex items-center space-x-2">
-              <Filter className="h-4 w-4" />
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
+            fontFamily:"'DM Sans',sans-serif", fontSize:13, color:'rgba(191,219,254,0.5)' }}>
+            <span>Showing <strong style={{ color:'#93c5fd' }}>{filteredDoctors.length}</strong> doctors</span>
+            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+              <Filter size={14} />
               <span>Filters applied: {[selectedSpecialization].filter(f => !f.includes('All')).length + (showVideoOnly ? 1 : 0)}</span>
             </div>
           </div>
         </div>
 
         {/* Doctors Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))', gap:24 }}>
           {filteredDoctors.map(doctor => {
-            // Skip rendering if user is null
             if (!doctor.user) return null;
-            
             const doctorName = `${doctor.user.firstName} ${doctor.user.lastName}`;
             const mainSpecialization = doctor.specialization?.split(' - ')[0] || 'General Medicine';
             const subSpecializations = doctor.specialization?.split(' - ')[1]?.split(', ') || [];
+            const isFav = favorites.includes(doctor._id);
+
+            const cardStyle: React.CSSProperties = {
+              background: 'rgba(255,255,255,0.04)',
+              backdropFilter: 'blur(20px)',
+              border: '1px solid rgba(96,165,250,0.15)',
+              borderRadius: 20,
+              padding: 24,
+              transition: 'all 0.3s',
+              cursor: 'default',
+            };
 
             return (
-              <Card key={doctor._id} className="hover:shadow-xl transition-shadow duration-300">
-                <CardHeader className="relative">
-                  <div className="flex items-start space-x-4">
-                    <Avatar className="w-16 h-16">
-                      <AvatarImage src={doctor.user.image} alt={doctorName} />
-                      <AvatarFallback>
-                        {doctor.user.firstName[0]}{doctor.user.lastName[0]}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <CardTitle className="text-lg">Dr. {doctorName}</CardTitle>
-                      <CardDescription>{doctor.experience}+ years experience</CardDescription>
-                      <div className="flex items-center space-x-1 mt-1">
-                        <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                        <span className="text-sm">4.8</span>
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => toggleFavorite(doctor._id)}
-                    >
-                      <Heart 
-                        className={`h-4 w-4 ${favorites.includes(doctor._id) ? 'fill-red-500 text-red-500' : 'text-muted-foreground'}`} 
-                      />
-                    </Button>
-                  </div>
-                </CardHeader>
-                
-                <CardContent className="space-y-4">
-                  <div>
-                    <div className="flex flex-wrap gap-1 mb-2">
-                      <Badge variant="secondary" className="text-xs">
-                        {mainSpecialization}
-                      </Badge>
-                      {subSpecializations.slice(0, 2).map((spec: string, index: number) => (
-                        <Badge key={index} variant="outline" className="text-xs">
-                          {spec.trim()}
-                        </Badge>
-                      ))}
-                      {subSpecializations.length > 2 && (
-                        <Badge variant="outline" className="text-xs">
-                          +{subSpecializations.length - 2} more
-                        </Badge>
-                      )}
-                    </div>
-                    
-                    <div className="flex items-center space-x-2 text-sm text-muted-foreground mb-2">
-                      <Award className="h-4 w-4" />
-                      <span>{doctor.degrees?.split(',')[0] || 'Medical Professional'}</span>
-                    </div>
-                    
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center space-x-2">
-                        <Clock className="h-4 w-4 text-green-500" />
-                        <span className="text-green-600">
-                          {doctor.availableTimeSlot ? 
-                            `${formatTime(doctor.availableTimeSlot.start)}-${formatTime(doctor.availableTimeSlot.end)}` : 
-                            'Check availability'
-                          }
+              <div key={doctor._id} style={cardStyle}
+                onMouseOver={e => { (e.currentTarget as HTMLDivElement).style.border = '1px solid rgba(96,165,250,0.35)'; (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)'; }}
+                onMouseOut={e => { (e.currentTarget as HTMLDivElement).style.border = '1px solid rgba(96,165,250,0.15)'; (e.currentTarget as HTMLDivElement).style.transform = 'none'; }}
+              >
+                {/* Header */}
+                <div style={{ display:'flex', gap:16, marginBottom:16, alignItems:'flex-start' }}>
+                  <div style={{ width:60, height:60, borderRadius:'50%', overflow:'hidden', flexShrink:0,
+                    background:'rgba(96,165,250,0.15)', border:'2px solid rgba(96,165,250,0.25)',
+                    display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    {doctor.user.image
+                      ? <img src={doctor.user.image} alt={doctorName} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                      : <span style={{ fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:20, color:'#60a5fa' }}>
+                          {doctor.user.firstName[0]}{doctor.user.lastName[0]}
                         </span>
-                      </div>
-                      <span className="font-bold text-primary">₹{doctor.consultantFee}</span>
+                    }
+                  </div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <h3 style={{ fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:16, color:'#eff6ff', margin:'0 0 4px' }}>
+                      Dr. {doctorName}
+                    </h3>
+                    <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:'rgba(191,219,254,0.55)', margin:'0 0 6px' }}>
+                      {doctor.experience}+ years experience
+                    </p>
+                    <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+                      <Star size={13} color="#fbbf24" fill="#fbbf24" />
+                      <span style={{ fontSize:13, color:'#fbbf24', fontWeight:600 }}>4.8</span>
                     </div>
                   </div>
+                  <button onClick={() => toggleFavorite(doctor._id)}
+                    style={{ background:'none', border:'none', cursor:'pointer', padding:4 }}>
+                    <Heart size={18} color={isFav ? '#ef4444' : 'rgba(191,219,254,0.4)'}
+                      fill={isFav ? '#ef4444' : 'none'} />
+                  </button>
+                </div>
 
-                  <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-                    <div className="flex items-center space-x-1">
-                      <Video className="h-3 w-3" />
-                      <span>Video</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <MessageSquare className="h-3 w-3" />
-                      <span>In-person</span>
-                    </div>
-                    <span>•</span>
-                    <span>{doctor.availableDays?.slice(0, 2).join(', ') || 'Mon-Fri'}</span>
-                  </div>
-
-                  <div className="flex space-x-2">
-                    <DoctorDetailModal doctor={doctor}>
-                      <Button variant="outline" size="sm" className="flex-1">
-                        View Profile
-                      </Button>
-                    </DoctorDetailModal>
-                    
-                    <Button 
-                      size="sm" 
-                      className="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105"
-                      onClick={() => navigate(`/appointment/${doctor._id}`)}
-                    >
-                      <Calendar className="mr-2 h-4 w-4" />
-                      Book Now
-                    </Button>
-                  </div>
-
-                  {/* Collaboration Button - Only show if user is a doctor */}
-                  {user?.accountType === 'Doctor' && user.id !== doctor.user._id && (
-                    <CollaborationDialog doctor={doctor}>
-                      <Button variant="outline" size="sm" className="w-full">
-                        <Users className="h-4 w-4 mr-2" />
-                        Collaboration
-                      </Button>
-                    </CollaborationDialog>
+                {/* Doctor Type & Specialization badges */}
+                <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:12 }}>
+                  {/* Doctor type badge */}
+                  <span style={{ padding:'3px 10px', borderRadius:20,
+                    background: doctor.doctorType === 'homeopathic' ? 'rgba(34,197,94,0.2)' : 'rgba(59,130,246,0.2)',
+                    color: doctor.doctorType === 'homeopathic' ? '#4ade80' : '#60a5fa',
+                    fontSize:11, fontWeight:700, fontFamily:"'DM Sans',sans-serif",
+                    display:'flex', alignItems:'center', gap:4 }}>
+                    {doctor.doctorType === 'homeopathic' ? '🌿' : '💊'}
+                    {doctor.doctorType === 'homeopathic' ? 'Homeopathic' : 'Allopathic'}
+                  </span>
+                  <span style={{ padding:'3px 10px', borderRadius:20, background:'rgba(37,99,235,0.25)',
+                    color:'#93c5fd', fontSize:11, fontWeight:600, fontFamily:"'DM Sans',sans-serif" }}>
+                    {mainSpecialization}
+                  </span>
+                  {subSpecializations.slice(0, 2).map((spec: string, i: number) => (
+                    <span key={i} style={{ padding:'3px 10px', borderRadius:20,
+                      border:'1px solid rgba(96,165,250,0.2)', color:'rgba(191,219,254,0.6)',
+                      fontSize:11, fontFamily:"'DM Sans',sans-serif" }}>
+                      {spec.trim()}
+                    </span>
+                  ))}
+                  {subSpecializations.length > 2 && (
+                    <span style={{ padding:'3px 10px', borderRadius:20,
+                      border:'1px solid rgba(96,165,250,0.2)', color:'rgba(191,219,254,0.5)',
+                      fontSize:11, fontFamily:"'DM Sans',sans-serif" }}>
+                      +{subSpecializations.length - 2} more
+                    </span>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+
+                {/* Degree */}
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10,
+                  color:'rgba(191,219,254,0.5)', fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>
+                  <Award size={14} />
+                  <span>{doctor.degrees?.split(',')[0] || 'Medical Professional'}</span>
+                </div>
+
+                {/* Time & Fee */}
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
+                  marginBottom:14, fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:6, color:'#34d399' }}>
+                    <Clock size={14} />
+                    <span>{doctor.availableTimeSlot
+                      ? `${formatTime(doctor.availableTimeSlot.start)}-${formatTime(doctor.availableTimeSlot.end)}`
+                      : 'Check availability'}</span>
+                  </div>
+                  <span style={{ fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:15, color:'#60a5fa' }}>
+                    ₹{doctor.consultantFee}
+                  </span>
+                </div>
+
+                {/* Consult types */}
+                <div style={{ display:'flex', gap:12, marginBottom:16,
+                  fontSize:12, color:'rgba(191,219,254,0.45)', fontFamily:"'DM Sans',sans-serif" }}>
+                  <span style={{ display:'flex', alignItems:'center', gap:4 }}><Video size={12} /> Video</span>
+                  <span style={{ display:'flex', alignItems:'center', gap:4 }}><MessageSquare size={12} /> In-person</span>
+                  <span>• {doctor.availableDays?.slice(0, 2).join(', ') || 'Mon-Fri'}</span>
+                </div>
+
+                {/* Action buttons */}
+                <div style={{ display:'flex', gap:10 }}>
+                  <DoctorDetailModal doctor={doctor}>
+                    <button style={{ flex:1, padding:'10px 0', borderRadius:14,
+                      border:'1px solid rgba(96,165,250,0.25)', background:'rgba(96,165,250,0.08)',
+                      color:'#93c5fd', fontFamily:"'DM Sans',sans-serif", fontWeight:600,
+                      fontSize:13, cursor:'pointer', transition:'all 0.2s' }}
+                      onMouseOver={e => { e.currentTarget.style.background='rgba(96,165,250,0.15)'; }}
+                      onMouseOut={e => { e.currentTarget.style.background='rgba(96,165,250,0.08)'; }}
+                    >
+                      View Profile
+                    </button>
+                  </DoctorDetailModal>
+                  <button
+                    onClick={() => navigate(`/appointment/${doctor._id}`)}
+                    style={{ flex:1, padding:'10px 0', borderRadius:14,
+                      background:'linear-gradient(135deg,#2563eb,#3b82f6)', color:'#fff',
+                      fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:13,
+                      border:'none', cursor:'pointer', transition:'all 0.2s',
+                      display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}
+                    onMouseOver={e => { e.currentTarget.style.transform='translateY(-1px)'; e.currentTarget.style.boxShadow='0 6px 20px rgba(37,99,235,0.4)'; }}
+                    onMouseOut={e => { e.currentTarget.style.transform='none'; e.currentTarget.style.boxShadow='none'; }}
+                  >
+                    <Calendar size={14} /> Book Now
+                  </button>
+                </div>
+
+                {/* Collaboration */}
+                {user?.accountType === 'Doctor' && user.id !== doctor.user._id && (
+                  <CollaborationDialog doctor={doctor}>
+                    <button style={{ width:'100%', marginTop:10, padding:'9px 0', borderRadius:14,
+                      border:'1px solid rgba(96,165,250,0.2)', background:'rgba(96,165,250,0.06)',
+                      color:'rgba(191,219,254,0.6)', fontFamily:"'DM Sans',sans-serif",
+                      fontSize:13, cursor:'pointer', display:'flex', alignItems:'center',
+                      justifyContent:'center', gap:6 }}>
+                      <Users size={14} /> Collaboration
+                    </button>
+                  </CollaborationDialog>
+                )}
+              </div>
             );
           })}
         </div>
 
         {filteredDoctors.length === 0 && (
-          <div className="text-center py-12">
-            <div className="text-6xl mb-4">👨‍⚕️</div>
-            <h3 className="text-xl font-semibold mb-2">No doctors found</h3>
-            <p className="text-muted-foreground">
+          <div style={{ textAlign:'center', padding:'64px 24px' }}>
+            <div style={{ fontSize:56, marginBottom:16 }}>👨‍⚕️</div>
+            <h3 style={{ fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:20, color:'#eff6ff', marginBottom:8 }}>No doctors found</h3>
+            <p style={{ fontFamily:"'DM Sans',sans-serif", color:'rgba(191,219,254,0.5)', marginBottom:20 }}>
               Try adjusting your search criteria or browse all doctors
             </p>
-            <Button 
+            <button
               onClick={() => {
                 setSearchTerm('');
                 setSelectedSpecialization('All Specializations');
                 setShowVideoOnly(false);
               }}
-              className="mt-4"
+              style={{ padding:'10px 28px', borderRadius:20, border:'none',
+                background:'linear-gradient(135deg,#2563eb,#3b82f6)', color:'#fff',
+                fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:14, cursor:'pointer' }}
             >
               Clear Filters
-            </Button>
+            </button>
           </div>
         )}
       </div>

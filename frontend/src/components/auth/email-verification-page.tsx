@@ -11,7 +11,7 @@ export const EmailVerificationPage: React.FC = () => {
   const [countdown, setCountdown] = useState(0);
   const [isVerified, setIsVerified] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
-  
+
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -28,14 +28,14 @@ export const EmailVerificationPage: React.FC = () => {
       try {
         // Simulate API call to check verification status
         await new Promise(resolve => setTimeout(resolve, 1000));
-        
+
         // For demo, auto-verify after 2 seconds
         setTimeout(() => {
           setIsVerified(true);
           toast.success('Email verified successfully!');
           setTimeout(() => navigate('/dashboard'), 2000);
         }, 2000);
-        
+
       } catch (error) {
         toast.error('Failed to check verification status');
       } finally {
@@ -62,7 +62,7 @@ export const EmailVerificationPage: React.FC = () => {
 
   const handleResendEmail = async () => {
     setIsResending(true);
-    
+
     try {
       // Simulate resending verification email
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -83,22 +83,15 @@ export const EmailVerificationPage: React.FC = () => {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-accent/10 flex items-center justify-center py-12 px-4">
-      <div className="max-w-4xl w-full grid lg:grid-cols-2 gap-8 items-center">
-        {/* Left side - Image */}
-        <div className="hidden lg:block">
-          <div className="relative">
-            <div className="w-full h-[600px] bg-gradient-to-br from-primary/20 to-accent/20 rounded-2xl shadow-xl flex items-center justify-center">
-              <div className="text-center text-primary">
-                <div className="text-6xl mb-4">📧</div>
-                <h3 className="text-2xl font-bold mb-4">Arogya Healthcare</h3>
-                <p className="text-lg font-medium">Email Verification</p>
-              </div>
-            </div>
-            <div className="absolute inset-0 bg-gradient-to-t from-primary/20 to-transparent rounded-2xl" />
-            <div className="absolute bottom-8 left-8 text-white">
-              <h3 className="text-2xl font-bold mb-2">Almost There!</h3>
-              <p className="text-white/90">Complete your registration</p>
+    <div className="ayur-page-dark" style={{ display:'flex', alignItems:'center', justifyContent:'center', padding:'48px 24px' }}>
+      <div style={{ maxWidth:960, width:'100%', display:'grid', gridTemplateColumns:'1fr 1fr', gap:48, alignItems:'center', position:'relative', zIndex:1 }}>
+        {/* Left side - Branding */}
+        <div style={{ display:'none' }} className="lg:!block">
+          <div style={{ position:'relative' }}>
+            <div style={{ background:'rgba(255,255,255,0.04)', backdropFilter:'blur(20px)', border:'1px solid rgba(96,165,250,0.18)', borderRadius:28, padding:'60px 40px', textAlign:'center' }}>
+              <div style={{ fontSize:64, marginBottom:16 }}>📧</div>
+              <h3 style={{ fontFamily:"'Syne',sans-serif", fontWeight:800, fontSize:22, color:'#eff6ff', marginBottom:8 }}>AyurSamhita</h3>
+              <p style={{ fontFamily:"'DM Sans',sans-serif", color:'rgba(191,219,254,0.5)', fontSize:15 }}>Email Verification</p>
             </div>
           </div>
         </div>
@@ -120,13 +113,13 @@ export const EmailVerificationPage: React.FC = () => {
                 {isVerified ? 'Welcome to Arogya!' : 'Verifying Your Email'}
               </CardTitle>
               <CardDescription className="text-lg">
-                {isVerified 
+                {isVerified
                   ? 'Your account is ready! Redirecting...'
                   : `Welcome, ${user.firstName}! Setting up your ${user.accountType} account...`
                 }
               </CardDescription>
             </CardHeader>
-            
+
             <CardContent className="space-y-6">
               {!isVerified ? (
                 <>
@@ -137,7 +130,7 @@ export const EmailVerificationPage: React.FC = () => {
                         <strong>Email:</strong> {user.email}
                       </p>
                     </div>
-                    
+
                     <div className="flex items-center justify-center space-x-2 text-sm text-muted-foreground">
                       <Loader2 className="h-4 w-4 animate-spin" />
                       <span>Setting up your account...</span>
@@ -145,8 +138,8 @@ export const EmailVerificationPage: React.FC = () => {
                   </div>
 
                   <div className="pt-4 border-t">
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       onClick={handleBackToLogin}
                       className="w-full"
                     >
@@ -162,7 +155,7 @@ export const EmailVerificationPage: React.FC = () => {
                       Your {user.accountType.toLowerCase()} account has been successfully created!
                     </p>
                   </div>
-                  
+
                   <div className="flex items-center justify-center space-x-2 text-sm text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     <span>Redirecting to dashboard...</span>

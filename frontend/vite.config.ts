@@ -56,6 +56,14 @@
     server: {
       port: 3000,
       open: true,
+      host: true,
+      proxy: {
+        '/api/v1': {
+          target: 'http://localhost:8002',
+          changeOrigin: true,
+          secure: false,
+        },
+      },
     },
     
   });

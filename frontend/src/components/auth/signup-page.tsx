@@ -56,7 +56,7 @@ export const SignupPage: React.FC = () => {
   const [showPrivacyDialog, setShowPrivacyDialog] = useState(false);
   const [currentSection, setCurrentSection] = useState(0);
   const [medicalCertificateFile, setMedicalCertificateFile] = useState<File | null>(null);
-  
+
   const { signup, googleLogin } = useAuth();
   const navigate = useNavigate();
 
@@ -173,7 +173,7 @@ export const SignupPage: React.FC = () => {
             auto_select: false,
             cancel_on_tap_outside: true,
           });
-          
+
           // Render Google Sign-In button
           window.google.accounts.id.renderButton(
             document.getElementById('googleSignInButton'),
@@ -350,47 +350,47 @@ export const SignupPage: React.FC = () => {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  
-  if (!validateForm()) return;
-  
-  setIsLoading(true);
+    e.preventDefault();
 
-  try {
-    // Prepare ALL user data including doctor-specific fields
-    const userData: any = {
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      email: formData.email,
-      contactNumber: formData.contactNumber,
-      password: formData.password,
-      accountType: formData.accountType
-    };
+    if (!validateForm()) return;
 
-    // Add ALL doctor-specific fields if signing up as doctor
-    if (formData.accountType === 'Doctor') {
-      userData.medicalLicenseNumber = formData.medicalLicenseNumber;
-      userData.specialization = formData.specialization;
-      userData.consultantFee = parseFloat(formData.consultantFee);
-      userData.experience = parseInt(formData.experience);
-      userData.degrees = formData.degrees;
-      userData.certification = formData.certification;
-      userData.availableDays = formData.availableDays;
-      userData.availableTimeSlot = formData.availableTimeSlot;
+    setIsLoading(true);
+
+    try {
+      // Prepare ALL user data including doctor-specific fields
+      const userData: any = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        contactNumber: formData.contactNumber,
+        password: formData.password,
+        accountType: formData.accountType
+      };
+
+      // Add ALL doctor-specific fields if signing up as doctor
+      if (formData.accountType === 'Doctor') {
+        userData.medicalLicenseNumber = formData.medicalLicenseNumber;
+        userData.specialization = formData.specialization;
+        userData.consultantFee = parseFloat(formData.consultantFee);
+        userData.experience = parseInt(formData.experience);
+        userData.degrees = formData.degrees;
+        userData.certification = formData.certification;
+        userData.availableDays = formData.availableDays;
+        userData.availableTimeSlot = formData.availableTimeSlot;
+      }
+
+      // Call signup with the complete user data object
+      await signup(userData);
+
+      toast.success('Account created successfully!');
+      navigate('/dashboard');
+    } catch (error: any) {
+      console.error('Signup error:', error);
+      toast.error(error?.response?.data?.message || error?.message || 'Signup failed. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
-
-    // Call signup with the complete user data object
-    await signup(userData);
-
-    toast.success('Account created successfully!');
-    navigate('/dashboard');
-  } catch (error: any) {
-    console.error('Signup error:', error);
-    toast.error(error?.response?.data?.message || error?.message || 'Signup failed. Please try again.');
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
   const nextSection = (sections: any[]) => {
     setCurrentSection(prev => (prev + 1) % sections.length);
@@ -403,32 +403,25 @@ export const SignupPage: React.FC = () => {
   const isDoctor = formData.accountType === 'Doctor';
 
   return (
-    <div 
-      className="min-h-screen bg-cover bg-center flex items-center justify-center py-12 px-4" 
-      style={{ backgroundImage: 'url("/bg.png")' }}
-    >
-      <div className="max-w-4xl w-full grid lg:grid-cols-2 gap-8 items-center">
-        {/* Left side - Image */}
-<div className="hidden lg:block">
-  <div className="relative h-full">
-    <div className="w-full h-[680px] bg-black rounded-2xl shadow-xl flex items-center justify-center overflow-hidden">
-      <img 
-        src="/left.png" 
-        alt="Healthcare illustration" 
-        className="w-full h-full object-cover"
-      />
-      <div className="absolute inset-0 bg-black/40 rounded-2xl" />
-    </div>
-    <div className="absolute bottom-8 left-8 text-white">
-      <h3 className="text-2xl font-bold mb-2">
-        {isDoctor ? 'Join as Healthcare Provider' : 'Join Our Community'}
-      </h3>
-      <p className="text-white/90">
-        {isDoctor ? 'Start providing healthcare services' : 'Start your journey to better healthcare'}
-      </p>
-    </div>
-  </div>
-</div>
+    <div className="ayur-page-dark" style={{ display:'flex', alignItems:'center', justifyContent:'center', padding:'48px 24px' }}>
+      <div style={{ maxWidth:960, width:'100%', display:'grid', gridTemplateColumns:'1fr 1fr', gap:48, alignItems:'center', position:'relative', zIndex:1 }}>
+        {/* Left side - Branding */}
+        <div className="hidden lg:block">
+          <div style={{ position:'relative' }}>
+            <div style={{ background:'rgba(255,255,255,0.04)', backdropFilter:'blur(20px)', border:'1px solid rgba(96,165,250,0.18)', borderRadius:28, overflow:'hidden' }}>
+              <img src="/left.png" alt="Healthcare illustration" style={{ width:'100%', height:680, objectFit:'cover', opacity:0.8 }} />
+              <div style={{ position:'absolute', inset:0, background:'linear-gradient(to top, rgba(5,16,43,0.9) 0%, transparent 50%)', borderRadius:28 }} />
+            </div>
+            <div style={{ position:'absolute', bottom:32, left:32, color:'#eff6ff' }}>
+              <h3 style={{ fontFamily:"'Syne',sans-serif", fontWeight:800, fontSize:22, marginBottom:8 }}>
+                {isDoctor ? 'Join as Healthcare Provider' : 'Join Our Community'}
+              </h3>
+              <p style={{ fontFamily:"'DM Sans',sans-serif", color:'rgba(191,219,254,0.7)', fontSize:14 }}>
+                {isDoctor ? 'Start providing healthcare services' : 'Start your journey to better healthcare'}
+              </p>
+            </div>
+          </div>
+        </div>
 
         {/* Right side - Signup Form */}
         <div className="w-full max-w-md mx-auto">
@@ -438,13 +431,13 @@ export const SignupPage: React.FC = () => {
                 {isDoctor ? 'Doctor Registration' : 'Create Account'}
               </CardTitle>
               <CardDescription>
-                {isDoctor 
-                  ? 'Join AyurSamhita as a Healthcare Provider' 
+                {isDoctor
+                  ? 'Join AyurSamhita as a Healthcare Provider'
                   : 'Join AyurSamhita - Your Complete Healthcare Platform'
                 }
               </CardDescription>
             </CardHeader>
-            
+
             <CardContent className="space-y-6">
               {/* Google Sign-In Button - Only for Patients */}
               {!isDoctor && (
@@ -697,8 +690,8 @@ export const SignupPage: React.FC = () => {
                           onChange={handleFileChange}
                           className="hidden"
                         />
-                        <Label 
-                          htmlFor="medicalCertificate" 
+                        <Label
+                          htmlFor="medicalCertificate"
                           className="cursor-pointer flex flex-col items-center space-y-2"
                         >
                           <Upload className="h-8 w-8 text-muted-foreground" />
@@ -803,8 +796,8 @@ export const SignupPage: React.FC = () => {
                   </Label>
                 </div>
 
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   className="w-full"
                   disabled={isLoading}
                 >
@@ -841,7 +834,7 @@ export const SignupPage: React.FC = () => {
               Section {currentSection + 1} of {termsSections.length} • Last updated: {new Date().toLocaleDateString()}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="flex-1 flex flex-col min-h-0">
             <div className="flex-1 bg-muted/20 rounded-lg p-6 overflow-y-auto">
               <div className="text-center mb-6">
@@ -850,7 +843,7 @@ export const SignupPage: React.FC = () => {
                 </h3>
                 <div className="w-20 h-1 bg-primary/30 mx-auto rounded-full"></div>
               </div>
-              
+
               <div className="prose prose-sm max-w-none">
                 <p className="text-muted-foreground leading-relaxed text-center text-lg">
                   {termsSections[currentSection].content}
@@ -868,19 +861,18 @@ export const SignupPage: React.FC = () => {
                 <ChevronLeft className="h-4 w-4" />
                 Previous
               </Button>
-              
+
               <div className="flex items-center gap-2">
                 {termsSections.map((_, index) => (
                   <button
                     key={index}
                     onClick={() => setCurrentSection(index)}
-                    className={`w-2 h-2 rounded-full transition-colors ${
-                      index === currentSection ? 'bg-primary' : 'bg-muted-foreground/30'
-                    }`}
+                    className={`w-2 h-2 rounded-full transition-colors ${index === currentSection ? 'bg-primary' : 'bg-muted-foreground/30'
+                      }`}
                   />
                 ))}
               </div>
-              
+
               <Button
                 variant="outline"
                 onClick={() => nextSection(termsSections)}
@@ -906,7 +898,7 @@ export const SignupPage: React.FC = () => {
               Section {currentSection + 1} of {privacySections.length} • Last updated: {new Date().toLocaleDateString()}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="flex-1 flex flex-col min-h-0">
             <div className="flex-1 bg-muted/20 rounded-lg p-6 overflow-y-auto">
               <div className="text-center mb-6">
@@ -915,7 +907,7 @@ export const SignupPage: React.FC = () => {
                 </h3>
                 <div className="w-20 h-1 bg-primary/30 mx-auto rounded-full"></div>
               </div>
-              
+
               <div className="prose prose-sm max-w-none">
                 <p className="text-muted-foreground leading-relaxed text-center text-lg">
                   {privacySections[currentSection].content}
@@ -933,19 +925,18 @@ export const SignupPage: React.FC = () => {
                 <ChevronLeft className="h-4 w-4" />
                 Previous
               </Button>
-              
+
               <div className="flex items-center gap-2">
                 {privacySections.map((_, index) => (
                   <button
                     key={index}
                     onClick={() => setCurrentSection(index)}
-                    className={`w-2 h-2 rounded-full transition-colors ${
-                      index === currentSection ? 'bg-primary' : 'bg-muted-foreground/30'
-                    }`}
+                    className={`w-2 h-2 rounded-full transition-colors ${index === currentSection ? 'bg-primary' : 'bg-muted-foreground/30'
+                      }`}
                   />
                 ))}
               </div>
-              
+
               <Button
                 variant="outline"
                 onClick={() => nextSection(privacySections)}

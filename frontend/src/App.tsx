@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
-import { BookOpen, Menu, X, User, LogOut, Moon, Sun, ArrowLeft } from 'lucide-react';
+import { BookOpen, Menu, X, User, LogOut, ArrowLeft } from 'lucide-react';
 import axios from 'axios';
 
 // Import components
@@ -86,7 +86,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   useEffect(() => {
     axios.defaults.withCredentials = true;
     axios.defaults.baseURL = API_BASE_URL;
-    
+
     // Check for existing session on app load
     checkAuthStatus();
   }, []);
@@ -100,7 +100,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         if (savedUser) {
           setUser(JSON.parse(savedUser));
         }
-        
+
         // Verify token is still valid by making a simple request
         try {
           // This would be your /me endpoint if available
@@ -135,40 +135,40 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   };
 
   const signup = async (userData: {
-  firstName: string;
-  lastName: string;
-  email: string;
-  contactNumber: string;
-  password: string;
-  accountType: string;
-  medicalLicenseNumber?: string;
-  specialization?: string;
-  consultantFee?: number;
-  experience?: number;
-  degrees?: string;
-  certification?: string;
-  availableDays?: string[];
-  availableTimeSlot?: {
-    start: string;
-    end: string;
-  };
-}) => {
-  try {
-    const response = await axios.post(`${API_BASE_URL}/auth/signup`, userData);
+    firstName: string;
+    lastName: string;
+    email: string;
+    contactNumber: string;
+    password: string;
+    accountType: string;
+    medicalLicenseNumber?: string;
+    specialization?: string;
+    consultantFee?: number;
+    experience?: number;
+    degrees?: string;
+    certification?: string;
+    availableDays?: string[];
+    availableTimeSlot?: {
+      start: string;
+      end: string;
+    };
+  }) => {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/auth/signup`, userData);
 
-    if (response.status === 201) {
-      // Auto-login after successful signup
-      await login(userData.email, userData.password);
+      if (response.status === 201) {
+        // Auto-login after successful signup
+        await login(userData.email, userData.password);
+      }
+    } catch (error: any) {
+      console.error('Signup error:', error);
+      throw error;
     }
-  } catch (error: any) {
-    console.error('Signup error:', error);
-    throw error;
-  }
-};
+  };
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await axios.post<{ 
+      const response = await axios.post<{
         success: boolean;
         message: string;
         user: any;
@@ -181,10 +181,10 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       });
 
       const { user: userData, token, access_token } = response.data;
-      
+
       // Use token or access_token (backend might use either)
       const authToken = token || access_token;
-      
+
       if (authToken) {
         document.cookie = `access_token=${authToken}; path=/; max-age=28800;`; // 8 hours
       }
@@ -206,10 +206,10 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       };
 
       setUser(userInfo);
-      
+
       // Store user in localStorage for persistence
       localStorage.setItem('user', JSON.stringify(userInfo));
-      
+
     } catch (error: any) {
       console.error('Login error:', error);
       throw error;
@@ -229,9 +229,9 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       });
 
       const { user: userData, token, access_token } = response.data;
-      
+
       const authToken = token || access_token;
-      
+
       if (authToken) {
         document.cookie = `access_token=${authToken}; path=/; max-age=28800;`;
       }
@@ -253,7 +253,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
       setUser(userInfo);
       localStorage.setItem('user', JSON.stringify(userInfo));
-      
+
     } catch (error: any) {
       console.error('Google login error:', error);
       throw error;
@@ -305,10 +305,10 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex items-center space-x-2">
-          <img src="/logo.jpg" alt="ॐ" className='h-12 w-auto'/>
-          <span className="text-lg text-muted-foreground">Loading...</span>
+      <div style={{ minHeight:'100vh', background:'#0b1d3a', display:'flex', alignItems:'center', justifyContent:'center' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+          <img src="/logo.jpg" alt="ॐ" style={{ height:48, width:'auto' }} />
+          <span style={{ fontSize:16, color:'rgba(191,219,254,0.55)', fontFamily:"'DM Sans',sans-serif" }}>Loading...</span>
         </div>
       </div>
     );
@@ -327,7 +327,7 @@ const ThemeContext = React.createContext<{
   toggleTheme: () => void;
 }>({
   isDark: false,
-  toggleTheme: () => {}
+  toggleTheme: () => { }
 });
 
 export const useTheme = () => React.useContext(ThemeContext);
@@ -353,7 +353,7 @@ const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       const savedTheme = localStorage.getItem('theme');
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       const shouldBeDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
-      
+
       if (shouldBeDark) {
         setIsDark(true);
         document.documentElement.classList.add('dark');
@@ -381,7 +381,7 @@ const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 // Navigation component
 const Navigation: React.FC = () => {
   const { user, logout } = useAuth();
-  const { isDark, toggleTheme } = useTheme();
+  // Theme toggle removed per user request
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -398,16 +398,16 @@ const Navigation: React.FC = () => {
     };
 
     window.addEventListener('userDataUpdated', handleUserDataUpdate as EventListener);
-    
+
     return () => {
       window.removeEventListener('userDataUpdated', handleUserDataUpdate as EventListener);
     };
   }, []);
 
-  const showBackButton = location.pathname !== '/' && 
-                         location.pathname !== '/login' && 
-                         location.pathname !== '/signup' && 
-                         location.pathname !== '/verify-email';
+  const showBackButton = location.pathname !== '/' &&
+    location.pathname !== '/login' &&
+    location.pathname !== '/signup' &&
+    location.pathname !== '/verify-email';
 
   const handleBackClick = () => {
     navigate(-1);
@@ -425,8 +425,8 @@ const Navigation: React.FC = () => {
   const NavLink: React.FC<{ to: string; children: React.ReactNode; className?: string }> = ({ to, children, className = "" }) => {
     const isActive = location.pathname === to;
     return (
-      <Link 
-        to={to} 
+      <Link
+        to={to}
         className={`text-foreground hover:text-primary transition-colors ${isActive ? 'text-primary font-medium' : ''} ${className}`}
       >
         {children}
@@ -436,7 +436,7 @@ const Navigation: React.FC = () => {
 
   const getUserInitials = () => {
     if (!user) return 'U';
-    return `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase();
+    return `${(user.firstName || 'U').charAt(0)}${(user.lastName || '').charAt(0)}`.toUpperCase();
   };
 
   const getUserDisplayName = () => {
@@ -444,59 +444,82 @@ const Navigation: React.FC = () => {
     return `${user.firstName} ${user.lastName}`;
   };
 
+  const navStyle: React.CSSProperties = {
+    background: 'rgba(5,16,43,0.95)',
+    backdropFilter: 'blur(20px)',
+    borderBottom: '1px solid rgba(96,165,250,0.15)',
+    position: 'sticky',
+    top: 0,
+    zIndex: 50,
+    fontFamily: "'DM Sans',sans-serif",
+  };
+
+  const linkStyle: React.CSSProperties = {
+    color: '#93c5fd',
+    textDecoration: 'none',
+    fontSize: 15,
+    fontWeight: 500,
+    transition: 'color 0.2s',
+  };
+
+  const activeLinkStyle: React.CSSProperties = {
+    ...linkStyle,
+    color: '#bfdbfe',
+    fontWeight: 700,
+  };
+
   return (
-    <nav className="bg-card border-b border-border sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo and Back Button */}
-          <div className="flex items-center space-x-4">
+    <nav style={navStyle}>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 64 }}>
+
+          {/* Logo */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             {showBackButton && (
-              <Button
-                variant="ghost"
-                size="sm"
+              <button
                 onClick={handleBackClick}
-                className="hidden md:flex items-center space-x-1 hover:bg-secondary"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#93c5fd',
+                  display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, padding: '6px 12px',
+                  borderRadius: 20, transition: 'background 0.2s' }}
+                onMouseOver={e => (e.currentTarget.style.background = 'rgba(96,165,250,0.1)')}
+                onMouseOut={e => (e.currentTarget.style.background = 'none')}
               >
-                <ArrowLeft className="h-4 w-4" />
-                <span>Back</span>
-              </Button>
+                <ArrowLeft size={16} /> Back
+              </button>
             )}
-            <Link to="/" className="flex items-center space-x-2">
-              <img src="/logo.jpg" alt="ॐ" className='h-12 w-auto' />
-              <span className="text-xl font-semibold text-foreground">AyurSamhita Healthcare Platform</span>
+            <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+              <img src="/logo.jpg" alt="ॐ" style={{ height: 38, width: 38, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(96,165,250,0.3)' }} />
+              <span style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 18, color: '#eff6ff' }}>
+                AyurSamhita
+              </span>
             </Link>
           </div>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
-            <NavLink to="/">Home</NavLink>
-            <NavLink to="/herbs">Herbs</NavLink>
-            <NavLink to="/doctors">Doctors</NavLink>
-            {user && (
-              <NavLink to="/dashboard">Dashboard</NavLink>
-            )}
+          {/* Desktop Nav Links */}
+          <div className="hidden md:flex" style={{ gap: 32, alignItems: 'center' }}>
+            {[{ to: '/', label: 'Home' }, { to: '/herbs', label: 'Herbs' }, { to: '/doctors', label: 'Doctors' },
+              ...(user ? [{ to: '/dashboard', label: 'Dashboard' }] : [])].map(({ to, label }) => (
+              <Link key={to} to={to}
+                style={location.pathname === to ? activeLinkStyle : linkStyle}
+                onMouseOver={e => (e.currentTarget.style.color = '#dbeafe')}
+                onMouseOut={e => (e.currentTarget.style.color = location.pathname === to ? '#bfdbfe' : '#93c5fd')}
+              >{label}</Link>
+            ))}
           </div>
 
           {/* Desktop Actions */}
-          <div className="hidden md:flex items-center space-x-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleTheme}
-            >
-              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </Button>
-            
+          <div className="hidden md:flex" style={{ alignItems: 'center', gap: 12 }}>
+
+
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 rounded-full p-0 overflow-hidden group">
-                    <Avatar className="h-8 w-8 ">
-                      <AvatarFallback  className="text-green-600 group-hover:text-black transition-colors">
-                        {getUserInitials()}
-                      </AvatarFallback>
-                    </Avatar>
-                  </Button>
+                  <button style={{ background: 'rgba(96,165,250,0.15)', border: '1px solid rgba(96,165,250,0.3)',
+                    borderRadius: '50%', width: 36, height: 36, cursor: 'pointer', color: '#93c5fd',
+                    fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 13, display: 'flex',
+                    alignItems: 'center', justifyContent: 'center' }}>
+                    {getUserInitials()}
+                  </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56" align="end" forceMount>
                   <div className="flex items-center justify-start p-2">
@@ -520,86 +543,79 @@ const Navigation: React.FC = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <div className="flex space-x-2">
-                <Button variant="ghost" asChild>
-                  <Link to="/login">Login</Link>
-                </Button>
-                <Button asChild>
-                  <Link to="/signup">Sign Up</Link>
-                </Button>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                <Link to="/login"
+                  style={{ color: '#93c5fd', textDecoration: 'none', fontWeight: 600, fontSize: 14,
+                    padding: '8px 16px', borderRadius: 20, transition: 'all 0.2s',
+                    border: '1px solid transparent' }}
+                  onMouseOver={e => { e.currentTarget.style.border = '1px solid rgba(96,165,250,0.3)'; e.currentTarget.style.background = 'rgba(96,165,250,0.08)'; }}
+                  onMouseOut={e => { e.currentTarget.style.border = '1px solid transparent'; e.currentTarget.style.background = 'none'; }}
+                >Login</Link>
+                <Link to="/signup"
+                  style={{ background: 'linear-gradient(135deg,#2563eb,#3b82f6)', color: '#fff',
+                    textDecoration: 'none', fontWeight: 700, fontSize: 14,
+                    padding: '9px 22px', borderRadius: 20, transition: 'all 0.2s',
+                    fontFamily: "'Syne',sans-serif" }}
+                  onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 8px 20px rgba(37,99,235,0.4)'; }}
+                  onMouseOut={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}
+                >Sign Up</Link>
               </div>
             )}
           </div>
 
-          {/* Mobile menu button */}
-          <div className="md:hidden">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            >
-              {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </Button>
-          </div>
+          {/* Mobile hamburger */}
+          <button className="md:hidden"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#93c5fd', padding: 8 }}
+          >
+            {isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
         </div>
 
-        {/* Mobile Navigation */}
+        {/* Mobile menu */}
         {isMobileMenuOpen && (
-          <div className="md:hidden border-t border-border">
-            <div className="px-2 pt-2 pb-3 space-y-1">
-              {showBackButton && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleBackClick}
-                  className="flex items-center space-x-2 w-full justify-start px-3 py-2 mb-2"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  <span>Back</span>
-                </Button>
-              )}
-              <NavLink to="/" className="block px-3 py-2">Home</NavLink>
-              <NavLink to="/herbs" className="block px-3 py-2">Herbs</NavLink>
-              <NavLink to="/doctors" className="block px-3 py-2">Doctors</NavLink>
-              {user && (
-                <NavLink to="/dashboard" className="block px-3 py-2">Dashboard</NavLink>
-              )}
-              
-              <div className="flex items-center justify-between px-3 py-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={toggleTheme}
-                >
-                  {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                  <span className="ml-2">{isDark ? 'Light' : 'Dark'} Mode</span>
-                </Button>
+          <div style={{ borderTop: '1px solid rgba(96,165,250,0.12)', padding: '16px 0', background: 'rgba(5,16,43,0.98)' }}>
+            {showBackButton && (
+              <button onClick={handleBackClick}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#93c5fd',
+                  display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, padding: '10px 16px', width: '100%' }}
+              ><ArrowLeft size={16} /> Back</button>
+            )}
+            {[{ to: '/', label: 'Home' }, { to: '/herbs', label: 'Herbs' }, { to: '/doctors', label: 'Doctors' },
+              ...(user ? [{ to: '/dashboard', label: 'Dashboard' }] : [])].map(({ to, label }) => (
+              <Link key={to} to={to}
+                style={{ ...linkStyle, display: 'block', padding: '10px 16px',
+                  ...(location.pathname === to ? { color: '#bfdbfe', fontWeight: 700 } : {}) }}
+              >{label}</Link>
+            ))}
+
+            {user ? (
+              <div style={{ padding: '10px 16px', borderTop: '1px solid rgba(96,165,250,0.1)', marginTop: 8 }}>
+                <p style={{ color: '#bfdbfe', fontSize: 14, marginBottom: 4 }}>{getUserDisplayName()}</p>
+                <p style={{ color: '#93c5fd', fontSize: 12, marginBottom: 12, textTransform: 'capitalize' }}>{user.accountType.toLowerCase()}</p>
+                <button onClick={handleLogout}
+                  style={{ background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.25)',
+                    color: '#bfdbfe', padding: '8px 20px', borderRadius: 20, cursor: 'pointer',
+                    fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 13,
+                    display: 'flex', alignItems: 'center', gap: 8, width: '100%', justifyContent: 'center' }}
+                ><LogOut size={14} /> Log out</button>
               </div>
-              
-              {user ? (
-                <div className="px-3 py-2">
-                  <div className="text-sm text-muted-foreground mb-2">
-                    {getUserDisplayName()}
-                    <span className="block text-xs capitalize text-primary">
-                      {user.accountType.toLowerCase()}
-                    </span>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={handleLogout} className="w-full">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Log out
-                  </Button>
-                </div>
-              ) : (
-                <div className="px-3 py-2 space-y-2">
-                  <Button variant="ghost" asChild className="w-full">
-                    <Link to="/login">Login</Link>
-                  </Button>
-                  <Button asChild className="w-full">
-                    <Link to="/signup">Sign Up</Link>
-                  </Button>
-                </div>
-              )}
-            </div>
+            ) : (
+              <div style={{ padding: '10px 16px', display: 'flex', flexDirection: 'column', gap: 10,
+                borderTop: '1px solid rgba(96,165,250,0.1)', marginTop: 8 }}>
+                <Link to="/login"
+                  style={{ color: '#93c5fd', textDecoration: 'none', padding: '10px 16px',
+                    borderRadius: 20, textAlign: 'center', border: '1px solid rgba(96,165,250,0.25)',
+                    fontWeight: 600, fontSize: 14 }}
+                >Login</Link>
+                <Link to="/signup"
+                  style={{ background: 'linear-gradient(135deg,#2563eb,#3b82f6)', color: '#fff',
+                    textDecoration: 'none', padding: '10px 16px', borderRadius: 20,
+                    textAlign: 'center', fontWeight: 700, fontSize: 14,
+                    fontFamily: "'Syne',sans-serif" }}
+                >Sign Up</Link>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -610,44 +626,44 @@ const Navigation: React.FC = () => {
 // Protected Route component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
-  
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex items-center space-x-2">
-          <img src="/logo.jpg" alt="ॐ" className='h-12 w-auto'/>
-          <span className="text-lg text-muted-foreground">Loading...</span>
+      <div style={{ minHeight:'100vh', background:'#0b1d3a', display:'flex', alignItems:'center', justifyContent:'center' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+          <img src="/logo.jpg" alt="ॐ" style={{ height:48, width:'auto' }} />
+          <span style={{ fontSize:16, color:'rgba(191,219,254,0.55)', fontFamily:"'DM Sans',sans-serif" }}>Loading...</span>
         </div>
       </div>
     );
   }
-  
+
   if (!user) {
     return <Navigate to="/login" replace />;
   }
-  
+
   return <>{children}</>;
 };
 
 // Public Route component (redirect to dashboard if already logged in)
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
-  
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex items-center space-x-2">
-          <img src="/logo.jpg" alt="ॐ" className='h-12 w-auto'/>
-          <span className="text-lg text-muted-foreground">Loading...</span>
+      <div style={{ minHeight:'100vh', background:'#0b1d3a', display:'flex', alignItems:'center', justifyContent:'center' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+          <img src="/logo.jpg" alt="ॐ" style={{ height:48, width:'auto' }} />
+          <span style={{ fontSize:16, color:'rgba(191,219,254,0.55)', fontFamily:"'DM Sans',sans-serif" }}>Loading...</span>
         </div>
       </div>
     );
   }
-  
+
   if (user) {
     return <Navigate to="/dashboard" replace />;
   }
-  
+
   return <>{children}</>;
 };
 
@@ -672,15 +688,15 @@ class ErrorBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-background flex items-center justify-center px-4">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-foreground mb-2">Something went wrong</h1>
-            <p className="text-muted-foreground mb-4">
+        <div style={{ minHeight:'100vh', background:'#0b1d3a', display:'flex', alignItems:'center', justifyContent:'center', padding:'0 24px' }}>
+          <div style={{ textAlign:'center' }}>
+            <h1 style={{ fontFamily:"'Syne',sans-serif", fontWeight:800, fontSize:24, color:'#eff6ff', marginBottom:12 }}>Something went wrong</h1>
+            <p style={{ color:'rgba(191,219,254,0.55)', fontFamily:"'DM Sans',sans-serif", marginBottom:20 }}>
               We apologize for the inconvenience. Please try refreshing the page.
             </p>
-            <Button onClick={() => window.location.reload()}>
+            <button className="ayur-btn-primary" onClick={() => window.location.reload()}>
               Refresh Page
-            </Button>
+            </button>
           </div>
         </div>
       );
@@ -697,66 +713,66 @@ export default function App() {
       <ThemeProvider>
         <AuthProvider>
           <Router>
-            <div className="min-h-screen bg-background">
+            <div style={{ minHeight:'100vh', background:'#0b1d3a', fontFamily:"'DM Sans',sans-serif" }}>
               <Navigation />
               <main>
                 <Routes>
                   <Route path="/" element={<LandingPage />} />
-                  <Route 
-                    path="/login" 
+                  <Route
+                    path="/login"
                     element={
                       <PublicRoute>
                         <LoginPage />
                       </PublicRoute>
-                    } 
+                    }
                   />
-                  <Route 
-                    path="/signup" 
+                  <Route
+                    path="/signup"
                     element={
                       <PublicRoute>
                         <SignupPage />
                       </PublicRoute>
-                    } 
+                    }
                   />
-                  <Route 
-                    path="/verify-email" 
+                  <Route
+                    path="/verify-email"
                     element={
                       <PublicRoute>
                         <EmailVerificationPage />
                       </PublicRoute>
-                    } 
+                    }
                   />
                   <Route path="/herbs" element={<HerbBrowser />} />
                   <Route path="/doctors" element={<DoctorSearch />} />
-                  <Route 
-                    path="/appointment/:doctorId" 
+                  <Route
+                    path="/appointment/:doctorId"
                     element={
                       <ProtectedRoute>
                         <AppointmentBooking />
                       </ProtectedRoute>
-                    } 
+                    }
                   />
-                  <Route 
-                    path="/payment" 
+                  <Route
+                    path="/payment"
                     element={
                       <ProtectedRoute>
                         <PaymentPage />
                       </ProtectedRoute>
-                    } 
+                    }
                   />
-                  <Route 
-                    path="/dashboard" 
+                  <Route
+                    path="/dashboard"
                     element={
                       <ProtectedRoute>
                         <UserDashboard />
                       </ProtectedRoute>
-                    } 
+                    }
                   />
                   {/* Catch-all route for unmatched paths */}
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </main>
-              <Toaster 
+              <Toaster
                 position="top-right"
                 closeButton
                 richColors

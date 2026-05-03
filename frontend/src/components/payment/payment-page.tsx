@@ -35,7 +35,7 @@ const paymentMethods: PaymentMethod[] = [
 export const PaymentPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  
+
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('card');
   const [isProcessing, setIsProcessing] = useState(false);
   const [cardDetails, setCardDetails] = useState({
@@ -57,10 +57,10 @@ export const PaymentPage: React.FC = () => {
   // Safe amount calculation with defaults
   const getAmountValues = () => {
     // Use provided amount or calculate from doctor data
-    const baseAmount = amount || 
-                     (doctor?.consultantFee && typeof doctor.consultantFee === 'number' ? doctor.consultantFee : 
-                     (typeof doctor?.consultationFee === 'string' ? parseInt(doctor.consultationFee.replace('₹', '')) || 500 : 500));
-    
+    const baseAmount = amount ||
+      (doctor?.consultantFee && typeof doctor.consultantFee === 'number' ? doctor.consultantFee :
+        (typeof doctor?.consultationFee === 'string' ? parseInt(doctor.consultationFee.replace('₹', '')) || 500 : 500));
+
     const subtotal = Number(baseAmount) || 500;
     const platformFee = subtotal * 0.05;
     const taxes = (subtotal + platformFee) * 0.18;
@@ -84,7 +84,7 @@ export const PaymentPage: React.FC = () => {
     } else if (field === 'cvv') {
       value = value.replace(/\D/g, '').slice(0, 4);
     }
-    
+
     setCardDetails(prev => ({
       ...prev,
       [field]: value
@@ -115,9 +115,9 @@ export const PaymentPage: React.FC = () => {
 
   const handlePayment = async () => {
     if (!validateCardDetails()) return;
-    
+
     setIsProcessing(true);
-    
+
     try {
       // Prepare appointment data
       const newAppointment = {
@@ -163,14 +163,14 @@ export const PaymentPage: React.FC = () => {
       localStorage.setItem(storageKey, JSON.stringify(updatedAppointments));
 
       toast.success('Payment successful! Your appointment has been confirmed.');
-      
+
       // Navigate to dashboard with the new appointment data
-      navigate('/dashboard', { 
-        state: { 
+      navigate('/dashboard', {
+        state: {
           newAppointment: newAppointment
         }
       });
-      
+
     } catch (error: any) {
       console.error('Payment error:', error);
       toast.error('Payment processing failed. Please try again.');
@@ -188,19 +188,19 @@ export const PaymentPage: React.FC = () => {
   const calculateEndTime = (startTime: string): string => {
     const [time, period] = startTime.split(' ');
     let [hours, minutes] = time.split(':').map(Number);
-    
+
     if (period === 'PM' && hours !== 12) hours += 12;
     if (period === 'AM' && hours === 12) hours = 0;
-    
+
     const startDate = new Date();
     startDate.setHours(hours, minutes, 0, 0);
     startDate.setMinutes(startDate.getMinutes() + 30);
-    
+
     const endHours = startDate.getHours();
     const endMinutes = startDate.getMinutes();
     const endPeriod = endHours >= 12 ? 'PM' : 'AM';
     const formattedHours = endHours % 12 || 12;
-    
+
     return `${formattedHours}:${endMinutes.toString().padStart(2, '0')} ${endPeriod}`;
   };
 
@@ -211,23 +211,23 @@ export const PaymentPage: React.FC = () => {
 
   if (!appointmentData || !doctor) {
     return (
-      <div className="min-h-screen bg-background py-8 px-4 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-6xl mb-4">⚠️</div>
-          <h3 className="text-xl font-semibold mb-2">Invalid Appointment Data</h3>
-          <p className="text-muted-foreground mb-4">Please book an appointment first.</p>
-          <Button onClick={() => navigate('/doctors')}>
+      <div className="ayur-page-dark" style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
+        <div style={{ textAlign:'center' }}>
+          <div style={{ fontSize:56, marginBottom:16 }}>⚠️</div>
+          <h3 style={{ fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:20, color:'#eff6ff', marginBottom:8 }}>Invalid Appointment Data</h3>
+          <p style={{ color:'rgba(191,219,254,0.55)', marginBottom:20 }}>Please book an appointment first.</p>
+          <button className="ayur-btn-primary" onClick={() => navigate('/doctors')}>
             Find a Doctor
-          </Button>
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background py-8 px-4">
+    <div className="ayur-page-dark" style={{ paddingTop:8, paddingBottom:40 }}>
       <Toaster position="top-right" />
-      <div className="max-w-6xl mx-auto">
+      <div style={{ maxWidth:1100, margin:'0 auto', padding:'0 24px', position:'relative', zIndex:1 }}>
         <div className="mb-8">
           <Button variant="ghost" onClick={() => navigate(-1)} className="mb-4">
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -248,7 +248,7 @@ export const PaymentPage: React.FC = () => {
                   Your payment information is encrypted and secure
                 </CardDescription>
               </CardHeader>
-              
+
               <CardContent className="space-y-6">
                 <div>
                   <Label className="text-base font-medium mb-4 block">Select Payment Method</Label>
@@ -325,7 +325,7 @@ export const PaymentPage: React.FC = () => {
               </CardContent>
             </Card>
 
-            <Button 
+            <Button
               onClick={handlePayment}
               disabled={isProcessing}
               size="lg"
@@ -351,7 +351,7 @@ export const PaymentPage: React.FC = () => {
               <CardHeader>
                 <CardTitle>Appointment Summary</CardTitle>
               </CardHeader>
-              
+
               <CardContent className="space-y-6">
                 {/* Doctor Info */}
                 <div className="flex items-center space-x-3">
@@ -377,12 +377,12 @@ export const PaymentPage: React.FC = () => {
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                     <span>{appointmentData.selectedDate || 'Not specified'}</span>
                   </div>
-                  
+
                   <div className="flex items-center space-x-2 text-sm">
                     <Clock className="h-4 w-4 text-muted-foreground" />
                     <span>{appointmentData.selectedTime || 'Not specified'}</span>
                   </div>
-                  
+
                   <div className="flex items-center space-x-2 text-sm">
                     {appointmentData.consultationType === 'video' ? (
                       <Video className="h-4 w-4 text-muted-foreground" />
@@ -393,7 +393,7 @@ export const PaymentPage: React.FC = () => {
                       {appointmentData.consultationType ? appointmentData.consultationType.replace('-', ' ') : 'video'} Consultation
                     </span>
                   </div>
-                  
+
                   <div className="flex items-center space-x-2 text-sm">
                     <User className="h-4 w-4 text-muted-foreground" />
                     <span>{appointmentData.patientInfo?.name || 'Patient'}</span>
@@ -408,19 +408,19 @@ export const PaymentPage: React.FC = () => {
                     <span>Consultation Fee</span>
                     <span>₹{formatCurrency(subtotal)}</span>
                   </div>
-                  
+
                   <div className="flex justify-between text-sm">
                     <span>Platform Fee</span>
                     <span>₹{formatCurrency(platformFee)}</span>
                   </div>
-                  
+
                   <div className="flex justify-between text-sm">
                     <span>Taxes (18% GST)</span>
                     <span>₹{formatCurrency(taxes)}</span>
                   </div>
-                  
+
                   <Separator />
-                  
+
                   <div className="flex justify-between font-medium">
                     <span>Total Amount</span>
                     <span className="text-primary">₹{formatCurrency(total)}</span>
@@ -437,7 +437,7 @@ export const PaymentPage: React.FC = () => {
 
                 <div className="text-xs text-muted-foreground">
                   <p>
-                    By proceeding with payment, you agree to our Terms of Service and Privacy Policy. 
+                    By proceeding with payment, you agree to our Terms of Service and Privacy Policy.
                     You can cancel or reschedule your appointment up to 24 hours before the scheduled time.
                   </p>
                 </div>

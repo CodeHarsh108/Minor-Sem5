@@ -1121,24 +1121,26 @@ export const UserDashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background py-8 px-4 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading your health dashboard...</p>
+      <div className="ayur-page-dark" style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
+        <div style={{ textAlign:'center' }}>
+          <div className="ayur-spinner"></div>
+          <p style={{ color:'rgba(191,219,254,0.55)', fontFamily:"'DM Sans',sans-serif" }}>Loading your health dashboard...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background py-8 px-4">
+    <div className="ayur-page-dark" style={{ paddingTop:8, paddingBottom:40 }}>
       <Toaster position="top-right" />
-      <div className="max-w-7xl mx-auto">
+      <div style={{ maxWidth:1200, margin:'0 auto', padding:'0 24px', position:'relative', zIndex:1 }}>
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
+        <div style={{ display:'flex', flexWrap:'wrap', alignItems:'center', justifyContent:'space-between', marginBottom:32, paddingTop:24 }}>
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Welcome back, {user.firstName}!</h1>
-            <p className="text-muted-foreground mt-1">
+            <h1 style={{ fontFamily:"'DM Serif Display',serif", fontSize:'clamp(28px,3vw,38px)', color:'#eff6ff', lineHeight:1.2, margin:'0 0 8px' }}>
+              Welcome back, <em style={{ color:'#60a5fa', fontStyle:'italic' }}>{user.firstName}</em>!
+            </h1>
+            <p style={{ fontFamily:"'DM Sans',sans-serif", color:'rgba(191,219,254,0.55)', fontSize:15, margin:0 }}>
               Here's your health overview for {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
             </p>
           </div>
