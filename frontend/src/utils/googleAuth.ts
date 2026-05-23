@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'https://ayursamhita-backend.onrender.com/api/v1';
+const API_BASE_URL = 'http://localhost:8002/api/v1';
 
 export const handleGoogleAuth = async (token: string, accountType: string = 'Patient') => {
   try {

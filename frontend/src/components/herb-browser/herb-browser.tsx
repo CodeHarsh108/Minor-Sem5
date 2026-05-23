@@ -8,6 +8,7 @@ import {
   Plus,
   X,
   Info,
+  Sparkles,
 } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
@@ -22,6 +23,7 @@ import {
 } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { useAuth } from '../../App';
+import { DoshaType } from '../dosha/dosha-quiz';
 import {
   Dialog,
   DialogContent,
@@ -30,7 +32,7 @@ import {
   DialogTitle,
 } from '../ui/dialog';
 
-const API_BASE_URL = 'https://ayursamhita-backend.onrender.com/api/v1';
+const API_BASE_URL = 'http://localhost:8002/api/v1';
 
 // Backend response interface
 interface MedicineResponse {
@@ -121,9 +123,20 @@ export const HerbBrowser: React.FC = () => {
     disease: string;
     type: 'allopathic' | 'ayurvedic';
   } | null>(null);
+  const [doshaProfile, setDoshaProfile] = useState<DoshaType>(null);
 
   const { user } = useAuth();
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  // Load dosha profile
+  useEffect(() => {
+    if (user) {
+      const savedDosha = localStorage.getItem(`doshaProfile_${user.id || user._id}`);
+      if (savedDosha) {
+        setDoshaProfile(savedDosha as DoshaType);
+      }
+    }
+  }, [user]);
 
   // Dynamic search with debouncing
   useEffect(() => {
@@ -275,6 +288,20 @@ export const HerbBrowser: React.FC = () => {
     'Migraine',
   ];
 
+  // Helper to determine if a herb is recommended for a dosha (mock mapping for demonstration)
+  const isHerbRecommendedForDosha = (herb: string, dosha: DoshaType) => {
+    if (!dosha) return false;
+    const herbName = herb.toLowerCase();
+    
+    const doshaHerbs = {
+      Vata: ['ashwagandha', 'tulsi', 'ginger', 'haritaki', 'sesame', 'cardamom'],
+      Pitta: ['amla', 'brahmi', 'shatavari', 'coriander', 'fennel', 'sandalwood', 'mint'],
+      Kapha: ['turmeric', 'trikatu', 'cinnamon', 'clove', 'black pepper', 'guggulu']
+    };
+
+    return doshaHerbs[dosha]?.some(h => herbName.includes(h)) || false;
+  };
+
   // Shared tag styling
   const tagBaseClasses =
     'cursor-pointer px-3 py-1 rounded-full text-sm font-medium shadow-md border transition-all duration-200 transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-offset-1';
@@ -291,6 +318,22 @@ export const HerbBrowser: React.FC = () => {
             Ayurvedic treatment options.
           </p>
         </div>
+
+        {/* Dosha Personalization Banner */}
+        {doshaProfile && (
+          <div className="mb-8 p-4 bg-primary/10 border border-primary/20 rounded-xl flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Sparkles className="w-6 h-6 text-primary" />
+              <div>
+                <h3 className="font-semibold text-foreground text-sm">Personalized for {doshaProfile} Dosha</h3>
+                <p className="text-xs text-muted-foreground">Ayurvedic remedies highlighted with ⭐ are especially beneficial for your constitution.</p>
+              </div>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => window.location.href = '/dosha-quiz'}>
+              Retake Quiz
+            </Button>
+          </div>
+        )}
 
         {/* Search Section */}
         <div className="ayur-glass-card" style={{ padding:'36px', marginBottom:48 }}>
@@ -465,24 +508,35 @@ export const HerbBrowser: React.FC = () => {
 
                 <CardContent className="pt-6">
                   <div className="space-y-3">
-                    {medicineData.Ayurvedic.map((medicine, index) => (
-                      <Button
-                        key={index}
-                        variant="outline"
-                        className="w-full justify-start p-4 h-auto hover:bg-green-50 hover:border-green-200 transition-colors group hover:text-green-600"
-                        onClick={() => handleMedicineClick(medicine, 'ayurvedic')}
-                      >
-                        <div className="flex items-center space-x-3 w-full">
-                          <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0" />
-                          <p className="text-sm font-medium flex-1 text-left group-hover:text-green-600 transition-colors">
-                            {medicine}
-                          </p>
-                          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Pill className="h-4 w-4 text-green-500" />
+                    {medicineData.Ayurvedic.map((medicine, index) => {
+                      const isRecommended = isHerbRecommendedForDosha(medicine, doshaProfile);
+                      return (
+                        <Button
+                          key={index}
+                          variant="outline"
+                          className={`w-full justify-start p-4 h-auto transition-colors group ${
+                            isRecommended 
+                              ? 'border-yellow-400 bg-yellow-50/50 hover:bg-yellow-100 dark:border-yellow-600/50 dark:bg-yellow-900/10 dark:hover:bg-yellow-900/20' 
+                              : 'hover:bg-green-50 hover:border-green-200 hover:text-green-600'
+                          }`}
+                          onClick={() => handleMedicineClick(medicine, 'ayurvedic')}
+                        >
+                          <div className="flex items-center space-x-3 w-full">
+                            <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isRecommended ? 'bg-yellow-500' : 'bg-green-500'}`} />
+                            <div className="flex-1 text-left">
+                              <p className={`text-sm font-medium transition-colors ${
+                                isRecommended ? 'text-yellow-700 dark:text-yellow-400' : 'group-hover:text-green-600'
+                              }`}>
+                                {medicine} {isRecommended && <span className="ml-1 text-xs">⭐ Recommended</span>}
+                              </p>
+                            </div>
+                            <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Pill className={`h-4 w-4 ${isRecommended ? 'text-yellow-600' : 'text-green-500'}`} />
+                            </div>
                           </div>
-                        </div>
-                      </Button>
-                    ))}
+                        </Button>
+                      );
+                    })}
                   </div>
                 </CardContent>
               </Card>

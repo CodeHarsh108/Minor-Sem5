@@ -12,14 +12,17 @@ const {
   deleteAppointment,
   bookAppointment,
   getBookedTimeSlots,
-   getDoctorByUserId,
+  getDoctorByUserId,
+  getPatientDetails,
+  addCollaboratingDoctor,
+  removeCollaboratingDoctor,
+  getCollaboratingAppointments,
 } = require("../controllers/User.js");
 
 // Profile routes
 router.post("/update-profile/:id", updateDoctorProfile);
 router.get("/doctors", getAllDoctors);
 router.get("/doctor/:userId", getDoctorByUserId);
-
 
 // Medicine routes
 router.get("/medicines", getMedicines);
@@ -35,5 +38,13 @@ router.get("/available-appointment/:doctorId", getBookedTimeSlots);
 router.get("/patients-bookings/:patientId", getAppointmentsByPatient);
 router.get("/doctors-bookings/:doctorId", getAppointmentsByDoctor);
 router.delete("/delete-appointment/:id", deleteAppointment);
+
+// Patient details (for doctors)
+router.get("/patient-details/:userId", getPatientDetails);
+
+// Doctor collaboration routes
+router.post("/appointment/:appointmentId/collaborate", addCollaboratingDoctor);
+router.delete("/appointment/:appointmentId/collaborate/:doctorId", removeCollaboratingDoctor);
+router.get("/collaborating-appointments/:doctorId", getCollaboratingAppointments);
 
 module.exports = router;

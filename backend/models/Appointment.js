@@ -31,11 +31,11 @@ const appointmentSchema = new mongoose.Schema(
     timeSlot: {
       start: {
         type: String,
-        required: true, // Format: 'HH:MM'
+        required: true,
       },
       end: {
         type: String,
-        required: true, // Format: 'HH:MM'
+        required: true,
       },
     },
     description: {
@@ -46,14 +46,24 @@ const appointmentSchema = new mongoose.Schema(
       type: Boolean,
       required: true,
       default: false,
-    }
+    },
+    meetingLink: {
+      type: String,
+      trim: true,
+    },
+    collaboratingDoctors: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Doctor",
+      },
+    ],
   },
   {
     timestamps: true,
   }
 );
 
-// Middleware to set the `day` field based on the `date`
+// Pre-save: set day from date
 appointmentSchema.pre("save", function (next) {
   if (this.date) {
     const daysOfWeek = [
@@ -65,7 +75,7 @@ appointmentSchema.pre("save", function (next) {
       "Friday",
       "Saturday",
     ];
-    const dayIndex = this.date.getUTCDay(); // Get day of week as a number (0 - Sunday, 6 - Saturday)
+    const dayIndex = this.date.getUTCDay();
     this.day = daysOfWeek[dayIndex];
   }
   next();

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { Toaster, toast } from 'sonner';
-import { Calendar, Clock, Video, MessageSquare, User, Star, MapPin, Phone, Mail, FileText, Activity, Bell, Settings, LogOut, Heart, Pill, TrendingUp, Plus, Target, CheckCircle, Clock as ClockIcon, AlertTriangle, Edit, Save, X, Map, Stethoscope, Calendar as CalendarIcon, Award, GraduationCap, Briefcase, Headset } from 'lucide-react';
+import { Calendar, Clock, Video, MessageSquare, User, Star, MapPin, Phone, Mail, FileText, Activity, Bell, Settings, LogOut, Heart, Pill, TrendingUp, Plus, Target, CheckCircle, Clock as ClockIcon, AlertTriangle, Edit, Save, X, Map, Stethoscope, Calendar as CalendarIcon, Award, GraduationCap, Briefcase, Headset, Sparkles } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
@@ -19,8 +19,9 @@ import {
   DialogTitle,
 } from '../ui/dialog';
 import { DoctorDashboard } from './doctor-dashboard';
+import { DoshaType, getDoshaDetails } from '../dosha/dosha-quiz';
 
-const API_BASE_URL = 'https://ayursamhita-backend.onrender.com/api/v1';
+const API_BASE_URL = 'http://localhost:8002/api/v1';
 
 // Types based on your backend response
 interface UserInfo {
@@ -67,6 +68,7 @@ interface Appointment {
   consultationType: string;
   amount: number;
   status: 'upcoming' | 'completed' | 'cancelled';
+  meetingLink?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -219,6 +221,7 @@ export const UserDashboard: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [showAppointmentLinks, setShowAppointmentLinks] = useState(false);
   const [upcomingMeetingRooms, setUpcomingMeetingRooms] = useState<MeetingRoom[]>([]);
+  const [doshaProfile, setDoshaProfile] = useState<DoshaType>(null);
   const [editForm, setEditForm] = useState<EditForm>({
     firstName: '',
     lastName: '',
@@ -977,17 +980,18 @@ export const UserDashboard: React.FC = () => {
   };
 
   const generateMeetingRooms = (upcomingApps: Appointment[]): MeetingRoom[] => {
-    return upcomingApps.map(appointment => {
-      const doctorName = getDoctorName(appointment);
-      const roomName = `room-${appointment._id.slice(-8)}-${doctorName.replace(/\s+/g, '-').toLowerCase()}`;
-      
-      return {
-        roomName,
-        doctorName,
-        meetingTime: `${formatDate(appointment.date)} at ${formatTime(appointment.timeSlot.start)}`,
-        appointmentId: appointment._id
-      };
-    });
+    return upcomingApps
+      .filter(appointment => !!appointment.meetingLink)
+      .map(appointment => {
+        const doctorName = getDoctorName(appointment);
+
+        return {
+          roomName: appointment.meetingLink!,
+          doctorName,
+          meetingTime: `${formatDate(appointment.date)} at ${formatTime(appointment.timeSlot.start)}`,
+          appointmentId: appointment._id
+        };
+      });
   };
 
   // Copy room name to clipboard
@@ -999,8 +1003,8 @@ export const UserDashboard: React.FC = () => {
     });
   };
 
-  const handleJoinMeeting = (roomName: string) => {
-    window.open(`https://sfu.mirotalk.com/join?room=${roomName}`, '_blank');
+  const handleJoinMeeting = (meetingLink: string) => {
+    window.open(meetingLink, '_blank');
   };
 
   useEffect(() => {
@@ -1040,6 +1044,11 @@ export const UserDashboard: React.FC = () => {
       // Don't fetch doctor profile for doctors since they're redirected to doctor dashboard
       if (user.accountType !== 'Doctor') {
         fetchDoctorProfile();
+      }
+      // Load dosha profile
+      const savedDosha = localStorage.getItem(`doshaProfile_${user.id || user._id}`);
+      if (savedDosha) {
+        setDoshaProfile(savedDosha as DoshaType);
       }
     }
   }, [user]);
@@ -1191,8 +1200,8 @@ export const UserDashboard: React.FC = () => {
                         </p>
                         
                         <div className="flex items-center space-x-2 mb-3">
-                          <span className="text-sm font-medium">Room:</span>
-                          <code className="text-xs bg-muted px-2 py-1 rounded flex-1 font-mono">
+                          <span className="text-sm font-medium">Link:</span>
+                          <code className="text-xs bg-muted px-2 py-1 rounded flex-1 font-mono truncate" title={room.roomName}>
                             {room.roomName}
                           </code>
                           <Button
@@ -1245,6 +1254,61 @@ export const UserDashboard: React.FC = () => {
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
+            
+            {/* Dosha Profile Section */}
+            {doshaProfile ? (() => {
+              const details = getDoshaDetails(doshaProfile);
+              return details ? (
+                <Card className="border-primary/20 overflow-hidden relative">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full -z-10"></div>
+                  <CardContent className="p-6">
+                    <div className="flex flex-col md:flex-row gap-6">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Sparkles className={`w-5 h-5 ${details.color}`} />
+                          <span className="text-sm font-semibold tracking-wider uppercase text-muted-foreground">Your Ayurvedic Profile</span>
+                        </div>
+                        <h3 className={`text-2xl font-bold mb-2 ${details.color}`}>{details.name}</h3>
+                        <p className="text-muted-foreground mb-4">{details.description}</p>
+                        <div className="flex gap-4">
+                          <Button variant="outline" size="sm" asChild>
+                            <Link to="/dosha-quiz">Retake Quiz</Link>
+                          </Button>
+                          <Button variant="ghost" size="sm" asChild className={details.color}>
+                            <Link to="/herbs">View Personalized Herbs</Link>
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="flex-1 grid grid-cols-1 gap-4 border-t md:border-t-0 md:border-l pt-4 md:pt-0 md:pl-6">
+                        <div>
+                          <h4 className="text-sm font-semibold mb-1 flex items-center gap-2 text-foreground">🥗 Recommended Diet</h4>
+                          <p className="text-xs text-muted-foreground leading-relaxed">{details.diet}</p>
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-semibold mb-1 flex items-center gap-2 text-foreground">🧘 Daily Routine</h4>
+                          <p className="text-xs text-muted-foreground leading-relaxed">{details.lifestyle}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : null;
+            })() : (
+              <Card className="border-primary/20 bg-primary/5">
+                <CardContent className="p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-lg font-bold flex items-center gap-2 mb-1">
+                      <Sparkles className="w-5 h-5 text-primary" /> Discover Your Dosha
+                    </h3>
+                    <p className="text-sm text-muted-foreground">Take our quick quiz to find your Ayurvedic mind-body type and get personalized health recommendations.</p>
+                  </div>
+                  <Button asChild className="shrink-0">
+                    <Link to="/dosha-quiz">Take Dosha Quiz</Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Health Engagement Card */}
             <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
               <CardContent className="p-6">

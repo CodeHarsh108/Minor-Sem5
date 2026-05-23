@@ -189,6 +189,87 @@ exports.login = async (req, res) => {
   }
 };
 
+// Doctor Login by Name (firstName + lastName + password)
+exports.doctorLogin = async (req, res) => {
+  const { firstName, lastName, password } = req.body;
+
+  if (!firstName || !lastName || !password) {
+    return res.status(400).json({
+      success: false,
+      message: "First name, last name and password are required",
+    });
+  }
+
+  try {
+    // Find doctor user by name (case-insensitive)
+    const user = await User.findOne({
+      firstName: { $regex: new RegExp(`^${firstName.trim()}$`, "i") },
+      lastName: { $regex: new RegExp(`^${lastName.trim()}$`, "i") },
+      accountType: "Doctor",
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "No doctor found with that name",
+      });
+    }
+
+    // Compare passwords
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid password",
+      });
+    }
+
+    // Create JWT token
+    const token = jwt.sign(
+      { id: user._id, email: user.email, accountType: user.accountType },
+      JWT_SECRET,
+      { expiresIn: "8h" }
+    );
+
+    const profile = await Doctor.findOne({ user: user._id });
+
+    res
+      .cookie("access_token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        maxAge: 8 * 60 * 60 * 1000,
+      })
+      .status(200)
+      .json({
+        success: true,
+        message: "Doctor login successful",
+        user: {
+          id: user._id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          accountType: user.accountType,
+          image: user.image,
+          contactNumber: user.contactNumber,
+          dateOfBirth: user.dateOfBirth,
+          gender: user.gender,
+          bloodGroup: user.bloodGroup,
+        },
+        profile,
+        token,
+      });
+  } catch (error) {
+    console.error("Doctor login error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error during doctor login",
+    });
+  }
+};
+
+
+
 // Google Sign-In Controller
 exports.googleAuth = async (req, res) => {
   const { credential } = req.body;

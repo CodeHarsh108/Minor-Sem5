@@ -14,11 +14,12 @@ import { DoctorSearch } from './components/doctor/doctor-search';
 import { AppointmentBooking } from './components/appointment/appointment-booking';
 import { PaymentPage } from './components/payment/payment-page';
 import { UserDashboard } from './components/dashboard/user-dashboard';
+import { DoshaQuiz } from './components/dosha/dosha-quiz';
 import { Button } from './components/ui/button';
 import { Avatar, AvatarFallback } from './components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './components/ui/dropdown-menu';
 
-const API_BASE_URL = 'https://ayursamhita-backend.onrender.com/api/v1';
+const API_BASE_URL = 'http://localhost:8002/api/v1';
 const GOOGLE_CLIENT_ID = '172222448657-8qanqq7lktmbl11t9431sjoujk73254k.apps.googleusercontent.com';
 
 // User interface matching your backend
@@ -40,7 +41,7 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<string>;
   signup: (userData: {
     firstName: string;
     lastName: string;
@@ -63,7 +64,8 @@ interface AuthContextType {
   }) => Promise<void>;
   logout: () => Promise<void>;
   loading: boolean;
-  googleLogin: (credential: string) => Promise<void>;
+  googleLogin: (credential: string) => Promise<string>;
+  doctorLogin: (firstName: string, lastName: string, password: string) => Promise<string>;
   updateUser?: (userData: Partial<User>) => void;
 }
 
@@ -85,11 +87,14 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   // Initialize axios defaults
   useEffect(() => {
     axios.defaults.withCredentials = true;
-    axios.defaults.baseURL = API_BASE_URL;
+    // NOTE: Do NOT set axios.defaults.baseURL here — it causes path doubling
+    // when components use relative paths like '/api/v1/...'.
+    // All components must use full URLs: 'http://localhost:8002/api/v1/...'
 
     // Check for existing session on app load
     checkAuthStatus();
   }, []);
+
 
   const checkAuthStatus = async () => {
     try {
@@ -166,7 +171,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     }
   };
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<string> => {
     try {
       const response = await axios.post<{
         success: boolean;
@@ -210,13 +215,14 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       // Store user in localStorage for persistence
       localStorage.setItem('user', JSON.stringify(userInfo));
 
+      return userData.accountType as string;
     } catch (error: any) {
       console.error('Login error:', error);
       throw error;
     }
   };
 
-  const googleLogin = async (credential: string) => {
+  const googleLogin = async (credential: string): Promise<string> => {
     try {
       const response = await axios.post<{
         success: boolean;
@@ -254,8 +260,49 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       setUser(userInfo);
       localStorage.setItem('user', JSON.stringify(userInfo));
 
+      return userData.accountType as string;
     } catch (error: any) {
       console.error('Google login error:', error);
+      throw error;
+    }
+  };
+
+  const doctorLogin = async (firstName: string, lastName: string, password: string): Promise<string> => {
+    try {
+      const response = await axios.post<{
+        success: boolean;
+        message: string;
+        user: any;
+        token?: string;
+      }>(`${API_BASE_URL}/auth/doctor-login`, { firstName, lastName, password });
+
+      const { user: userData, token } = response.data;
+
+      if (token) {
+        document.cookie = `access_token=${token}; path=/; max-age=28800;`;
+      }
+
+      const userInfo: User = {
+        id: userData.id || userData._id,
+        _id: userData._id,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        email: userData.email,
+        accountType: userData.accountType,
+        image: userData.image,
+        contactNumber: userData.contactNumber,
+        dateOfBirth: userData.dateOfBirth,
+        gender: userData.gender,
+        bloodGroup: userData.bloodGroup,
+        verified: userData.verified
+      };
+
+      setUser(userInfo);
+      localStorage.setItem('user', JSON.stringify(userInfo));
+
+      return userData.accountType as string;
+    } catch (error: any) {
+      console.error('Doctor login error:', error);
       throw error;
     }
   };
@@ -299,6 +346,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     signup,
     logout,
     googleLogin,
+    doctorLogin,
     updateUser,
     loading
   }), [user, loading]);
@@ -765,6 +813,14 @@ export default function App() {
                     element={
                       <ProtectedRoute>
                         <UserDashboard />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/dosha-quiz"
+                    element={
+                      <ProtectedRoute>
+                        <DoshaQuiz />
                       </ProtectedRoute>
                     }
                   />

@@ -7,30 +7,15 @@ const Appointment = require("../models/Appointment.js");
 exports.updateDoctorProfile = async (req, res) => {
   try {
     const userId = req.params.id;
-    console.log(userId); // Assuming the doctorId is passed in the URL
     const { accountType } = req.body;
 
-    console.log(accountType);
-
     if (accountType == "Doctor") {
-      // Find the existing doctor profile
-
-      // const {
-      //   availableDays,
-      //   timeSlot,
-      //   consultantFee,
-      //   specialization,
-      //   experience,
-      //   degrees,
-      //   certification,
-      // } = req.body;
-
       const Profile = await Doctor.findOneAndUpdate(
         { user: userId },
         req.body,
         { new: true }
       ).populate("user");
-      //await Doctor.findById(userId).populate("user");
+
       if (!Profile) {
         return res.status(404).json({
           success: false,
@@ -38,9 +23,6 @@ exports.updateDoctorProfile = async (req, res) => {
         });
       }
 
-      console.log("--------> ", Profile);
-
-      // Update the User details (firstName, lastName, email, contactNumber)
       const user = await User.findOneAndUpdate({ _id: userId }, req.body, {
         new: true,
       });
@@ -51,51 +33,11 @@ exports.updateDoctorProfile = async (req, res) => {
         });
       }
 
-      // Update common user fields
-      // if (dateOfBirth) user.dateOfBirth = dateOfBirth || user.dateOfBirth;
-      // if (gender) user.gender = gender || user.gender;
-      // if (bloodGroup) user.bloodGroup = bloodGroup || user.bloodGroup;
-      // if (contactNumber)
-      //   user.contactNumber = contactNumber || user.contactNumber;
-
-      // Save the updated user
-      // await user.save();
-
-      // // Update doctor profile fields
-      // if (consultantFee)
-      //   Profile.consultantFee =
-      //     consultantFee || Profile.consultantFee;
-      // if (specialization)
-      //   Profile.specialization =
-      //     specialization || Profile.specialization;
-      // // if (availableTimeSlot)
-      // //   Profile.availableTimeSlot =
-      // //     availableTimeSlot || Profile.availableTimeSlot;
-      // if (certification)
-      //   Profile.certification =
-      //     certification || Profile.certification;
-      // if (degrees) Profile.degrees = degrees || Profile.degrees;
-      // if (experience)
-      //   Profile.experience = experience || Profile.experience;
-      // if (timeSlot) Profile.timeSlot = timeSlot || Profile.timeSlot;
-      // if (availableDays)
-      //   Profile.availableDays =
-      //     availableDays || Profile.availableDays;
-      // // Profile.images = images;
-
-      // console.log("79===>", Profile.timeSlot);
-      // console.log("850=>>", availableDays);
-
-      // // Save the updated doctor profile
-      // await Profile.save();
-
-      // const updatedUser = Profile;
-
       res.status(200).json({
         success: true,
         message: "Doctor profile updated successfully.",
         Profile,
-        user
+        user,
       });
     } else if (accountType == "Patient") {
       const Profile = await Patient.findOneAndUpdate(
@@ -103,27 +45,23 @@ exports.updateDoctorProfile = async (req, res) => {
         req.body,
         { new: true }
       );
-      //await Doctor.findById(userId).populate("user");
+
       if (!Profile) {
         return res.status(404).json({
           success: false,
-          message: "Doctor profile not found.",
+          message: "Patient profile not found.",
         });
       }
 
-      console.log("--------> ", Profile);
-
-      // Update the User details (firstName, lastName, email, contactNumber)
       const user = await User.findOneAndUpdate({ _id: userId }, req.body, {
         new: true,
       });
       if (!user) {
         return res.status(404).json({
           success: false,
-          message: "User associated with this doctor profile not found.",
+          message: "User associated with this patient profile not found.",
         });
       }
-      console.log(user);
 
       res.status(200).json({
         success: true,
@@ -143,10 +81,11 @@ exports.updateDoctorProfile = async (req, res) => {
 
 exports.getAllDoctors = async (req, res) => {
   try {
-    // Fetch all doctors and populate related user data
-    const doctors = await Doctor.find().populate("user");
+    const allDoctors = await Doctor.find().populate("user");
 
-    // Check if any doctors were found
+    // Filter out doctors whose user was deleted (null after populate)
+    const doctors = allDoctors.filter(d => d.user != null);
+
     if (!doctors || doctors.length === 0) {
       return res.status(404).json({
         success: false,
@@ -168,66 +107,15 @@ exports.getAllDoctors = async (req, res) => {
   }
 };
 
-// Add this to your User controller (controllers/User.js)
-exports.fixDoctorProfile = async (req, res) => {
-  try {
-    const { userId } = req.params;
-    
-    // Find the doctor by user ID
-    const doctor = await Doctor.findOne({ user: userId });
-    
-    if (!doctor) {
-      return res.status(404).json({
-        success: false,
-        message: "Doctor not found"
-      });
-    }
-
-    // Update with default/real data
-    const updatedDoctor = await Doctor.findOneAndUpdate(
-      { user: userId },
-      {
-        specialization: doctor.specialization || "General Medicine",
-        experience: doctor.experience || 5,
-        consultantFee: doctor.consultantFee || 800,
-        degrees: doctor.degrees || "MBBS, MD",
-        certification: doctor.certification || "Medical Board Certified",
-        availableDays: doctor.availableDays && doctor.availableDays.length > 0 
-          ? doctor.availableDays 
-          : ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
-        availableTimeSlot: doctor.availableTimeSlot || {
-          start: "09:00",
-          end: "17:00"
-        },
-        approvalStatus: true
-      },
-      { new: true }
-    ).populate("user");
-
-    console.log('Updated doctor:', updatedDoctor);
-
-    res.status(200).json({
-      success: true,
-      message: "Doctor profile updated successfully",
-      doctor: updatedDoctor
-    });
-  } catch (error) {
-    console.error('Error fixing doctor profile:', error);
-    res.status(500).json({
-      success: false,
-      message: "Error updating doctor profile"
-    });
-  }
-};
-
-
 // Get doctor by user ID
 exports.getDoctorByUserId = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    const doctor = await Doctor.findOne({ user: userId })
-      .populate("user", "firstName lastName email contactNumber image accountType gender bloodGroup dateOfBirth");
+    const doctor = await Doctor.findOne({ user: userId }).populate(
+      "user",
+      "firstName lastName email contactNumber image accountType gender bloodGroup dateOfBirth"
+    );
 
     if (!doctor) {
       return res.status(404).json({
@@ -250,18 +138,197 @@ exports.getDoctorByUserId = async (req, res) => {
   }
 };
 
+// Get full patient details (for doctors to view)
+exports.getPatientDetails = async (req, res) => {
+  try {
+    const { userId } = req.params;
 
-// controllers/diseaseController.js
+    const user = await User.findById(userId).select(
+      "firstName lastName email contactNumber gender bloodGroup dateOfBirth image accountType"
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Patient not found",
+      });
+    }
+
+    const patientProfile = await Patient.findOne({ user: userId });
+
+    res.status(200).json({
+      success: true,
+      message: "Patient details retrieved successfully",
+      user,
+      patientProfile: patientProfile || null,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Server error. Please try again later.",
+    });
+  }
+};
+
+// Add a collaborating doctor to an appointment
+exports.addCollaboratingDoctor = async (req, res) => {
+  try {
+    const { appointmentId } = req.params;
+    const { doctorId } = req.body;
+
+    const appointment = await Appointment.findById(appointmentId);
+    if (!appointment) {
+      return res.status(404).json({
+        success: false,
+        message: "Appointment not found",
+      });
+    }
+
+    // Check if doctor is the primary doctor
+    if (appointment.doctor.toString() === doctorId) {
+      return res.status(400).json({
+        success: false,
+        message: "The primary doctor cannot be added as a collaborator",
+      });
+    }
+
+    // Check if already collaborating
+    if (
+      appointment.collaboratingDoctors
+        .map((id) => id.toString())
+        .includes(doctorId)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "This doctor is already collaborating on this appointment",
+      });
+    }
+
+    appointment.collaboratingDoctors.push(doctorId);
+    await appointment.save();
+
+    const updatedAppointment = await Appointment.findById(appointmentId)
+      .populate({
+        path: "patient",
+        select: "firstName lastName email contactNumber gender accountType image",
+        model: "User",
+      })
+      .populate({
+        path: "doctor",
+        populate: {
+          path: "user",
+          model: "User",
+          select: "firstName lastName email image",
+        },
+      })
+      .populate({
+        path: "collaboratingDoctors",
+        populate: {
+          path: "user",
+          model: "User",
+          select: "firstName lastName email image specialization",
+        },
+      });
+
+    res.status(200).json({
+      success: true,
+      message: "Collaborating doctor added successfully",
+      appointment: updatedAppointment,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Server error. Please try again later.",
+    });
+  }
+};
+
+// Remove a collaborating doctor from an appointment
+exports.removeCollaboratingDoctor = async (req, res) => {
+  try {
+    const { appointmentId, doctorId } = req.params;
+
+    const appointment = await Appointment.findById(appointmentId);
+    if (!appointment) {
+      return res.status(404).json({
+        success: false,
+        message: "Appointment not found",
+      });
+    }
+
+    appointment.collaboratingDoctors = appointment.collaboratingDoctors.filter(
+      (id) => id.toString() !== doctorId
+    );
+    await appointment.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Collaborating doctor removed successfully",
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Server error. Please try again later.",
+    });
+  }
+};
+
+// Get appointments where the doctor is a collaborator
+exports.getCollaboratingAppointments = async (req, res) => {
+  try {
+    const { doctorId } = req.params;
+
+    const appointments = await Appointment.find({
+      collaboratingDoctors: doctorId,
+    })
+      .populate({
+        path: "patient",
+        select: "firstName lastName email contactNumber gender accountType image",
+        model: "User",
+      })
+      .populate({
+        path: "doctor",
+        populate: {
+          path: "user",
+          model: "User",
+          select: "firstName lastName email image",
+        },
+      })
+      .populate({
+        path: "collaboratingDoctors",
+        populate: {
+          path: "user",
+          model: "User",
+          select: "firstName lastName email image",
+        },
+      })
+      .sort({ date: 1, "timeSlot.start": 1 });
+
+    res.status(200).json({
+      success: true,
+      message: "Collaborating appointments retrieved successfully",
+      data: appointments,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Server error. Please try again later.",
+    });
+  }
+};
 
 exports.getMedicines = async (req, res) => {
   try {
-    const { diseaseName } = req.query; // Get the disease name from the query parameter
+    const { diseaseName } = req.query;
 
     if (!diseaseName) {
       return res.status(400).json({ message: "Disease name is required" });
     }
 
-    // Search for the disease in the database (case-insensitive search)
     const disease = await Disease.findOne({
       disease: { $regex: diseaseName, $options: "i" },
     });
@@ -270,7 +337,6 @@ exports.getMedicines = async (req, res) => {
       return res.status(404).json({ message: "Disease not found" });
     }
 
-    // Send the disease's allopathic and ayurvedic medicines
     return res.json({
       disease: disease.disease,
       Allopathic: disease.Allopathic,
@@ -286,15 +352,12 @@ exports.searchDoctors = async (req, res) => {
   try {
     const { firstName, lastName, specialization } = req.query;
 
-    // Build query object to search doctors
     let doctorQuery = {};
 
     if (specialization) {
-      // Add specialization to query if provided
-      doctorQuery.specialization = { $regex: specialization, $options: "i" }; // Case-insensitive search
+      doctorQuery.specialization = { $regex: specialization, $options: "i" };
     }
 
-    // Search for doctors based on firstName or lastName by referencing User schema
     const userQuery = {};
     if (firstName) {
       userQuery.firstName = { $regex: firstName, $options: "i" };
@@ -303,35 +366,26 @@ exports.searchDoctors = async (req, res) => {
       userQuery.lastName = { $regex: lastName, $options: "i" };
     }
 
-    // Find users matching firstName or lastName
     const matchedUsers = await User.find(userQuery).select("_id");
 
-    // If no matching users found, return an empty list
     if (matchedUsers.length === 0) {
       return res
         .status(404)
         .json({ message: "No users found matching your name criteria" });
     }
 
-    // Add condition to the doctor query to match doctors with the corresponding user IDs
     doctorQuery.user = { $in: matchedUsers.map((user) => user._id) };
 
-    // Search for doctors based on the query object
     const doctors = await Doctor.find(doctorQuery)
-      .populate(
-        "user",
-        "firstName lastName email contactNumber image accountType"
-      ) // Populate user data
+      .populate("user", "firstName lastName email contactNumber image accountType")
       .exec();
 
-    // If no doctors found, return a 404 message
     if (doctors.length === 0) {
       return res
         .status(404)
         .json({ message: "No doctors found matching your criteria" });
     }
 
-    // Return the found doctors
     res.status(200).json({ doctors });
   } catch (error) {
     console.error(error);
@@ -339,34 +393,30 @@ exports.searchDoctors = async (req, res) => {
   }
 };
 
-
-
 exports.deleteDoctor = async (req, res) => {
   try {
     const { userId } = req.params;
-    console.log("Deleting doctor with userId:", userId);
 
-    // FIXED: Correct query syntax
     const deletedDoctor = await Doctor.findOneAndDelete({ user: userId });
     const deletedUser = await User.findByIdAndDelete(userId);
 
     if (!deletedDoctor || !deletedUser) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: "Doctor not found" 
+        message: "Doctor not found",
       });
     }
 
-    res.status(200).json({ 
+    res.status(200).json({
       success: true,
-      message: "Doctor deleted successfully" 
+      message: "Doctor deleted successfully",
     });
   } catch (error) {
     console.error("Error deleting doctor:", error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: "Server error", 
-      error: error.message 
+      message: "Server error",
+      error: error.message,
     });
   }
 };
@@ -374,56 +424,50 @@ exports.deleteDoctor = async (req, res) => {
 exports.deletePatient = async (req, res) => {
   try {
     const { userId } = req.params;
-    console.log("Deleting patient with userId:", userId);
 
-    // FIXED: Correct query syntax
     const deletedPatient = await Patient.findOneAndDelete({ user: userId });
     const deletedUser = await User.findByIdAndDelete(userId);
 
     if (!deletedPatient || !deletedUser) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: "Patient not found" 
+        message: "Patient not found",
       });
     }
 
-    res.status(200).json({ 
+    res.status(200).json({
       success: true,
-      message: "Patient deleted successfully" 
+      message: "Patient deleted successfully",
     });
   } catch (error) {
     console.error("Error deleting patient:", error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: "Server error", 
-      error: error.message 
+      message: "Server error",
+      error: error.message,
     });
   }
 };
 
-// FIXED: Add proper error handling to bookAppointment
 exports.bookAppointment = async (req, res) => {
   try {
-    const { user, doctor, date, timeSlot, description, paymentStatus } = req.body;
+    const { user, doctor, date, timeSlot, description, paymentStatus, medicalHistory, medications, savedMedicines } = req.body;
 
-    // Validate required fields
     if (!user || !doctor || !date || !timeSlot) {
       return res.status(400).json({
         success: false,
-        message: "Missing required fields: user, doctor, date, and timeSlot are required"
+        message: "Missing required fields: user, doctor, date, and timeSlot are required",
       });
     }
 
-    // Convert date string to Date object if it's a string
     const appointmentDate = new Date(date);
     if (isNaN(appointmentDate.getTime())) {
       return res.status(400).json({
         success: false,
-        message: "Invalid date format"
+        message: "Invalid date format",
       });
     }
 
-    // Fetch the doctor's available time slots from the Doctor schema
     const doctorDetails = await Doctor.findById(doctor);
     if (!doctorDetails) {
       return res.status(404).json({
@@ -434,21 +478,22 @@ exports.bookAppointment = async (req, res) => {
 
     const { availableTimeSlot } = doctorDetails;
 
-    // Ensure the user's selected time slot is within the doctor's available time slot
-    if (
-      timeSlot.start < availableTimeSlot.start ||
-      timeSlot.end > availableTimeSlot.end
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: `The selected time slot is outside the doctor's available time range of ${availableTimeSlot.start} to ${availableTimeSlot.end}.`,
-      });
+    // Only validate time range if doctor has availableTimeSlot configured
+    if (availableTimeSlot && availableTimeSlot.start && availableTimeSlot.end) {
+      if (
+        timeSlot.start < availableTimeSlot.start ||
+        timeSlot.end > availableTimeSlot.end
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: `The selected time slot is outside the doctor's available time range of ${availableTimeSlot.start} to ${availableTimeSlot.end}.`,
+        });
+      }
     }
 
-    // Validate the duration of the time slot (minimum 15 minutes, maximum 45 minutes)
     const startTime = new Date(`1970-01-01T${timeSlot.start}:00Z`);
     const endTime = new Date(`1970-01-01T${timeSlot.end}:00Z`);
-    const duration = (endTime - startTime) / (1000 * 60); // Duration in minutes
+    const duration = (endTime - startTime) / (1000 * 60);
 
     if (duration < 15 || duration > 45) {
       return res.status(400).json({
@@ -457,7 +502,6 @@ exports.bookAppointment = async (req, res) => {
       });
     }
 
-    // Check if any existing appointment overlaps with the new time slot
     const overlappingAppointment = await Appointment.findOne({
       doctor,
       date: appointmentDate,
@@ -476,7 +520,6 @@ exports.bookAppointment = async (req, res) => {
       });
     }
 
-    // Create and save a new appointment
     let appointment = new Appointment({
       patient: user,
       doctor,
@@ -488,7 +531,30 @@ exports.bookAppointment = async (req, res) => {
 
     await appointment.save();
 
-    // Populate the fields after saving
+    // Generate Jitsi meeting link using the appointment's _id
+    appointment.meetingLink = `https://meet.jit.si/AyurSamhita-${appointment._id}`;
+    await appointment.save();
+
+    // Save patient medical data to Patient profile (upsert)
+    if (medicalHistory || medications || savedMedicines) {
+      const patientUpdate = {};
+      if (medicalHistory) patientUpdate.medicalHistory = medicalHistory;
+      if (medications) patientUpdate.medications = medications;
+      if (savedMedicines && savedMedicines.length > 0) {
+        // Build allergies/medicine list from saved medicines
+        const medicineNames = savedMedicines.map(m => `${m.name} (${m.medicineType} - for ${m.disease})`).join(', ');
+        patientUpdate.allergies = medicineNames;
+      }
+
+      if (Object.keys(patientUpdate).length > 0) {
+        await Patient.findOneAndUpdate(
+          { user: user },
+          { $set: patientUpdate },
+          { upsert: true, new: true }
+        );
+      }
+    }
+
     appointment = await Appointment.findById(appointment._id)
       .populate("patient")
       .populate("doctor");
@@ -511,7 +577,6 @@ exports.getBookedTimeSlots = async (req, res) => {
   try {
     const { doctorId } = req.params;
 
-    // Find all appointments for the given doctor
     const appointments = await Appointment.find(
       { doctor: doctorId },
       "date timeSlot"
@@ -527,14 +592,11 @@ exports.getBookedTimeSlots = async (req, res) => {
       });
     }
 
-    // Format the response to group by date
     const groupedTimeSlots = appointments.reduce((acc, appointment) => {
       const dateKey = appointment.date.toISOString().split("T")[0];
-      
+
       if (!acc[dateKey]) {
-        acc[dateKey] = {
-          timeSlots: [],
-        };
+        acc[dateKey] = { timeSlots: [] };
       }
 
       acc[dateKey].timeSlots.push(appointment.timeSlot);
@@ -555,26 +617,31 @@ exports.getBookedTimeSlots = async (req, res) => {
   }
 };
 
-
 exports.getAppointmentsByDoctor = async (req, res) => {
   try {
     const doctorId = req.params.doctorId;
 
-    // First, get the doctor to find their user ID
     const doctor = await Doctor.findById(doctorId);
     if (!doctor) {
       return res.status(404).json({
         success: false,
-        message: "Doctor not found"
+        message: "Doctor not found",
       });
     }
 
-    // Find appointments for this doctor and populate patient data properly
     const appointments = await Appointment.find({ doctor: doctorId })
       .populate({
         path: "patient",
-        select: "firstName lastName email contactNumber gender accountType",
-        model: "User"
+        select: "firstName lastName email contactNumber gender accountType image bloodGroup dateOfBirth",
+        model: "User",
+      })
+      .populate({
+        path: "collaboratingDoctors",
+        populate: {
+          path: "user",
+          model: "User",
+          select: "firstName lastName email image",
+        },
       })
       .sort({ date: 1, "timeSlot.start": 1 });
 
@@ -582,7 +649,7 @@ exports.getAppointmentsByDoctor = async (req, res) => {
       return res.status(200).json({
         success: true,
         message: "No appointments found for this doctor",
-        data: []
+        data: [],
       });
     }
 
@@ -596,13 +663,12 @@ exports.getAppointmentsByDoctor = async (req, res) => {
     console.error("Error fetching doctor appointments:", error);
     res.status(500).json({
       success: false,
-      message: "Server error fetching appointments"
+      message: "Server error fetching appointments",
     });
   }
 };
 
-
-exports.getAppointmentsByPatient = async (req, res) => { // Removed 'next' parameter
+exports.getAppointmentsByPatient = async (req, res) => {
   try {
     const patientId = req.params.patientId;
 
@@ -617,10 +683,10 @@ exports.getAppointmentsByPatient = async (req, res) => { // Removed 'next' param
     });
 
     if (!appointments || appointments.length === 0) {
-      return res.status(200).json({ // Changed to 200 for empty results
+      return res.status(200).json({
         success: true,
         message: "No appointments found for this patient",
-        data: []
+        data: [],
       });
     }
 
@@ -634,34 +700,34 @@ exports.getAppointmentsByPatient = async (req, res) => { // Removed 'next' param
     console.error("Error fetching patient appointments:", error);
     res.status(500).json({
       success: false,
-      message: "Server error fetching appointments"
+      message: "Server error fetching appointments",
     });
   }
 };
 
-exports.deleteAppointment = async (req, res) => { // Removed 'next' parameter
+exports.deleteAppointment = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const appointment = await Appointment.findById(id);
     if (!appointment) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: "Appointment not found" 
+        message: "Appointment not found",
       });
     }
 
     await Appointment.findByIdAndDelete(id);
 
-    res.status(200).json({ 
+    res.status(200).json({
       success: true,
-      message: "Appointment deleted successfully" 
+      message: "Appointment deleted successfully",
     });
   } catch (error) {
     console.error("Error deleting appointment:", error);
     res.status(500).json({
       success: false,
-      message: "Server error deleting appointment"
+      message: "Server error deleting appointment",
     });
   }
 };

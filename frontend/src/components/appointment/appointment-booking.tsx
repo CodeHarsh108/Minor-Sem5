@@ -15,7 +15,7 @@ import { Separator } from '../ui/separator';
 import { useAuth } from '../../App';
 import axios from 'axios';
 
-const API_BASE_URL = 'https://ayursamhita-backend.onrender.com/api/v1';
+const API_BASE_URL = 'http://localhost:8002/api/v1';
 
 // Types based on your backend
 interface Doctor {
@@ -369,7 +369,12 @@ useEffect(() => {
             consultationFee: `₹${doctor.consultantFee}`,
             videoConsultation: true
           },
-          amount: doctor.consultantFee
+          amount: doctor.consultantFee,
+          patientMedicalData: {
+            medicalHistory: bookingData.medicalHistory || '',
+            currentMedications: bookingData.currentMedications || '',
+            savedMedicines: savedMedicines || []
+          }
         }
       });
     } catch (error: any) {
